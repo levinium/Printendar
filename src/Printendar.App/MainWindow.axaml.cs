@@ -1,4 +1,3 @@
-using System.Diagnostics;
 using Avalonia.Controls;
 using Avalonia.Interactivity;
 using Avalonia.Platform.Storage;
@@ -6,7 +5,6 @@ using Printendar.App.Controls;
 using Printendar.App.Printing;
 using Printendar.Core.Export;
 using Printendar.Core.Printing;
-using Printendar.Sources.Microsoft365;
 
 namespace Printendar.App;
 
@@ -33,102 +31,23 @@ public partial class MainWindow : Window
         this.FindControl<Button>("NextMonth")!.Click += (_, _) => model.StepMonth(1);
         this.FindControl<Button>("SavePdf")!.Click += OnSavePdf;
         this.FindControl<Button>("Print")!.Click += OnPrint;
-        this.FindControl<Button>("ConnectMicrosoft")!.Click += OnConnectMicrosoft;
-        this.FindControl<Button>("Disconnect")!.Click += async (_, _) => await _model.DisconnectAsync();
-        this.FindControl<Button>("AdminConsent")!.Click += OnAdminConsent;
-        this.FindControl<Button>("OpenIcsFile")!.Click += OnOpenIcsFile;
-        this.FindControl<Button>("MicrosoftSetup")!.Click += OnMicrosoftSetup;
-        this.FindControl<Button>("SaveMicrosoftRegistration")!.Click += OnSaveMicrosoftRegistration;
-        this.FindControl<Button>("OpenPortal")!.Click += OnOpenPortal;
-        this.FindControl<Button>("ApproveForOrganisation")!.Click += OnApproveForOrganisation;
+        this.FindControl<Button>("ManageCalendars")!.Click += OnManageCalendars;
 
-        // Saved settings decide whether the Connect button is available, so load before the
-        // first bindings evaluate.
-        model.LoadSettings();
+        // Loading opens every saved calendar, which for a feed means the network. Not awaited,
+        // so the window appears at once and the calendars fill in as they answer.
+        _ = model.LoadSettingsAsync();
     }
 
-    private async void OnOpenIcsFile(object? sender, RoutedEventArgs e)
+    private async void OnManageCalendars(object? sender, RoutedEventArgs e)
     {
-        var files = await StorageProvider.OpenFilePickerAsync(new FilePickerOpenOptions
-        {
-            Title = "Open a calendar file",
-            AllowMultiple = true,
-            FileTypeFilter =
-            [
-                new FilePickerFileType("Calendar files") { Patterns = ["*.ics"] },
-                FilePickerFileTypes.All,
-            ],
-        });
+        var dialog = new ManageCalendarsWindow(_model.Sources, _model.Settings);
 
-        var paths = files
-            .Select(f => f.TryGetLocalPath())
-            .Where(p => p is not null)
-            .Select(p => p!)
-            .ToList();
+        await dialog.ShowDialog(this);
 
-        if (paths.Count == 0)
-        {
-            return;
-        }
-
-        await _model.OpenCalendarFilesAsync(paths);
+        // The list may have changed while it was open, and the month on screen was laid out
+        // from the old one.
+        await _model.RefreshEventsAsync();
     }
-
-    private void OnAdminConsent(object? sender, RoutedEventArgs e)
-    {
-        if (_model.AdminConsentUrl is not { } url)
-        {
-            return;
-        }
-
-        Process.Start(new ProcessStartInfo(url) { UseShellExecute = true });
-
-        _model.ClearAdminConsentPrompt();
-        _model.ReportProblem(
-            "Approve Printendar on the page that just opened, then come back and click " +
-            "Connect Microsoft 365 again.");
-    }
-
-    private async void OnConnectMicrosoft(object? sender, RoutedEventArgs e)
-    {
-        var options = _model.MicrosoftOptions;
-
-        if (!options.IsConfigured)
-        {
-            // The button is disabled in this state, so this is belt and braces rather than the
-            // path anyone takes.
-            _model.ShowMicrosoftSetup = true;
-            return;
-        }
-
-        await _model.ConnectAsync(new GraphCalendarSource(options));
-    }
-
-    private void OnMicrosoftSetup(object? sender, RoutedEventArgs e) =>
-        _model.ShowMicrosoftSetup = !_model.ShowMicrosoftSetup;
-
-    private void OnSaveMicrosoftRegistration(object? sender, RoutedEventArgs e) =>
-        _model.SaveMicrosoftRegistration();
-
-    private void OnOpenPortal(object? sender, RoutedEventArgs e) =>
-        Open(MainViewModel.PortalNewRegistrationUrl);
-
-    private void OnApproveForOrganisation(object? sender, RoutedEventArgs e)
-    {
-        if (string.IsNullOrEmpty(_model.MicrosoftAdminConsentUrl))
-        {
-            return;
-        }
-
-        Open(_model.MicrosoftAdminConsentUrl);
-
-        _model.ReportProblem(
-            "Approve Printendar on the page that just opened, then come back and click " +
-            "Connect Microsoft 365.");
-    }
-
-    private static void Open(string url) =>
-        Process.Start(new ProcessStartInfo(url) { UseShellExecute = true });
 
     private async void OnSavePdf(object? sender, RoutedEventArgs e)
     {

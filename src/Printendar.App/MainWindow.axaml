@@ -2,6 +2,7 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:controls="clr-namespace:Printendar.App.Controls"
         xmlns:vm="clr-namespace:Printendar.App"
+        xmlns:src="clr-namespace:Printendar.App.Sources"
         xmlns:paper="clr-namespace:Printendar.Core.Paper;assembly=Printendar.Core"
         x:Class="Printendar.App.MainWindow"
         x:DataType="vm:MainViewModel"
@@ -60,115 +61,50 @@
 
         <TextBlock Classes="sectionHeading" Text="CALENDARS" />
 
-        <!-- Before anyone signs in, the window shows a sample month rather than an empty
-             grid, so it is obvious what the program does. -->
-        <StackPanel IsVisible="{Binding IsNotConnected}">
-          <Button Name="ConnectMicrosoft"
-                  Content="Connect Microsoft 365"
-                  HorizontalAlignment="Stretch"
-                  IsEnabled="{Binding IsMicrosoftConfigured}" />
-          <TextBlock Classes="hint"
-                     IsVisible="{Binding IsMicrosoftNotConfigured}"
-                     Text="This build has no Microsoft app registration. Your IT administrator can point Printendar at your organisation's own, below. Or open a calendar file, which needs no account at all." />
+        <!-- A list of things, not a row of verbs. Everything that adds, signs into or removes
+             a calendar lives behind one button, because those are occasional actions and this
+             panel is read every time. -->
+        <ItemsControl ItemsSource="{Binding Sources.Sources}">
+          <ItemsControl.ItemTemplate>
+            <DataTemplate x:DataType="src:SourceEntry">
+              <StackPanel Margin="0,0,0,12">
+                <TextBlock Text="{Binding DisplayName}" FontWeight="SemiBold"
+                           TextTrimming="CharacterEllipsis" />
+                <TextBlock Text="{Binding KindLabel}" FontSize="10" Opacity="0.55" />
 
-          <!-- Everything an administrator needs, in the app. No script, no environment
-               variable, no editing files by hand. -->
-          <Button Name="MicrosoftSetup"
-                  Content="IT administrator setup"
-                  HorizontalAlignment="Stretch"
-                  Margin="0,4,0,0" />
+                <!-- Against the source rather than in the status bar: with four calendars
+                     connected, "could not be read" does not say which one to go and fix. -->
+                <TextBlock Text="{Binding Error}"
+                           IsVisible="{Binding HasError}"
+                           FontSize="10" Foreground="#a30000"
+                           TextWrapping="Wrap" Margin="0,2,0,0" />
 
-          <Border IsVisible="{Binding ShowMicrosoftSetup}"
-                  Margin="0,6,0,0" Padding="10" CornerRadius="4"
-                  Background="{DynamicResource SystemAltMediumLowColor}">
-            <StackPanel>
-              <TextBlock Text="Use your organisation's own app registration"
-                         FontWeight="SemiBold" TextWrapping="Wrap" />
-              <TextBlock Classes="hint"
-                         Text="Most organisations do not need this. If your tenant allows it, an administrator can simply approve Printendar once and everyone signs in normally." />
+                <ItemsControl ItemsSource="{Binding Calendars}" Margin="8,4,0,0">
+                  <ItemsControl.ItemTemplate>
+                    <DataTemplate x:DataType="vm:SelectableCalendar">
+                      <CheckBox IsChecked="{Binding IsSelected}" Margin="0,0,0,2">
+                        <StackPanel Orientation="Horizontal" Spacing="6">
+                          <Border Width="10" Height="10" CornerRadius="2"
+                                  Background="{Binding Swatch}" VerticalAlignment="Center" />
+                          <TextBlock Text="{Binding DisplayName}" TextTrimming="CharacterEllipsis" />
+                        </StackPanel>
+                      </CheckBox>
+                    </DataTemplate>
+                  </ItemsControl.ItemTemplate>
+                </ItemsControl>
+              </StackPanel>
+            </DataTemplate>
+          </ItemsControl.ItemTemplate>
+        </ItemsControl>
 
-              <Button Name="ApproveForOrganisation"
-                      Content="Approve Printendar for my organisation"
-                      HorizontalAlignment="Stretch"
-                      IsEnabled="{Binding IsMicrosoftConfigured}"
-                      Margin="0,6,0,0" />
-              <TextBlock Classes="hint"
-                         Text="Opens Microsoft's approval page. One click, and everyone in your organisation can sign in." />
+        <TextBlock Classes="hint"
+                   IsVisible="{Binding HasNoSources}"
+                   Text="Showing a sample month. Add a calendar to print your own. Printendar only ever reads your calendars." />
 
-              <TextBlock Text="Or register your own" FontWeight="SemiBold" Margin="0,10,0,0" />
-              <Button Name="OpenPortal"
-                      Content="Open the Entra portal"
-                      HorizontalAlignment="Stretch"
-                      Margin="0,4,0,0" />
-              <TextBlock Text="{Binding RegistrationRecipe}"
-                         FontSize="10" TextWrapping="Wrap" Opacity="0.75"
-                         Margin="0,6,0,0" />
-
-              <TextBlock Text="Application (client) ID" Margin="0,10,0,2" FontSize="11" />
-              <TextBox Text="{Binding MicrosoftClientId}"
-                       Watermark="00000000-0000-0000-0000-000000000000" FontSize="11" />
-
-              <TextBlock Text="Tenant (optional)" Margin="0,6,0,2" FontSize="11" />
-              <TextBox Text="{Binding MicrosoftTenant}"
-                       Watermark="common" FontSize="11" />
-
-              <Button Name="SaveMicrosoftRegistration"
-                      Content="Save"
-                      HorizontalAlignment="Stretch"
-                      Classes="accent"
-                      Margin="0,8,0,0" />
-              <TextBlock Classes="hint"
-                         Text="Stored for your Windows account only. The application ID is not a secret: Printendar is a public client app and holds no password." />
-            </StackPanel>
-          </Border>
-          <!-- Needs no account and no approval from anybody, so it is offered alongside
-               rather than buried: for a lot of people it is the only route that works. -->
-          <Button Name="OpenIcsFile"
-                  Content="Open a calendar file (.ics)"
-                  HorizontalAlignment="Stretch"
-                  Margin="0,4,0,0"
-                  IsEnabled="{Binding IsNotBusy}" />
-          <TextBlock Classes="hint"
-                     Text="Showing a sample month until a calendar is connected. Printendar only ever reads your calendar." />
-
-          <!-- Only appears when Microsoft actually said an administrator is required.
-               Offering it speculatively would send most people to a page they cannot use. -->
-          <StackPanel IsVisible="{Binding NeedsAdminConsent}" Margin="0,8,0,0">
-            <Button Name="AdminConsent"
-                    Content="Approve for my organisation"
-                    HorizontalAlignment="Stretch" />
-            <TextBlock Classes="hint"
-                       Text="Opens Microsoft's approval page. You need to be an administrator. If you are not, send the address below to whoever is." />
-            <!-- Read only and selectable rather than a copy button: the person sending this
-                 to their IT administrator can see exactly what they are sending. -->
-            <TextBox Text="{Binding AdminConsentUrl, Mode=OneWay}"
-                     IsReadOnly="True"
-                     FontSize="10"
-                     TextWrapping="Wrap"
-                     AcceptsReturn="True"
-                     MaxHeight="80"
-                     Margin="0,4,0,0" />
-          </StackPanel>
-        </StackPanel>
-
-        <StackPanel IsVisible="{Binding IsConnected}">
-          <TextBlock Text="{Binding AccountLabel}" FontSize="11" Opacity="0.75" TextTrimming="CharacterEllipsis" />
-          <ItemsControl ItemsSource="{Binding Calendars}" Margin="0,6,0,0">
-            <ItemsControl.ItemTemplate>
-              <DataTemplate x:DataType="vm:SelectableCalendar">
-                <CheckBox IsChecked="{Binding IsSelected}" Margin="0,0,0,2">
-                  <StackPanel Orientation="Horizontal" Spacing="6">
-                    <Border Width="10" Height="10" CornerRadius="2"
-                            Background="{Binding Swatch}" VerticalAlignment="Center" />
-                    <TextBlock Text="{Binding DisplayName}" TextTrimming="CharacterEllipsis" />
-                  </StackPanel>
-                </CheckBox>
-              </DataTemplate>
-            </ItemsControl.ItemTemplate>
-          </ItemsControl>
-          <Button Name="Disconnect" Content="Sign out" HorizontalAlignment="Stretch" Margin="0,8,0,0" />
-        </StackPanel>
-
+        <Button Name="ManageCalendars"
+                Content="Add or manage calendars…"
+                HorizontalAlignment="Stretch"
+                Margin="0,4,0,0" />
         <TextBlock Classes="sectionHeading" Text="PAPER" />
         <ComboBox ItemsSource="{Binding PaperSizeChoices}" SelectedItem="{Binding Paper}">
           <ComboBox.ItemTemplate>

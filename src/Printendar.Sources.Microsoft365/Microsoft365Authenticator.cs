@@ -25,9 +25,23 @@ public sealed class Microsoft365Authenticator : IAsyncDisposable
     private MsalCacheHelper? _cacheHelper;
     private bool _cacheAttached;
 
-    public Microsoft365Authenticator(Microsoft365Options options)
+    private readonly string? _homeAccountId;
+
+    /// <param name="homeAccountId">
+    /// Which cached account this instance speaks for, so a work and a personal account can be
+    /// signed in at once.
+    /// </param>
+    /// <remarks>
+    /// Without this the cache is asked for its accounts and the first is taken, which is
+    /// correct only while there is one. With two connected, both would silently resolve to the
+    /// same account and show the same calendars under two different names: wrong, and wrong in
+    /// a way that looks like a duplicate rather than a bug.
+    /// </remarks>
+    public Microsoft365Authenticator(Microsoft365Options options, string? homeAccountId = null)
     {
         ArgumentNullException.ThrowIfNull(options);
+
+        _homeAccountId = string.IsNullOrWhiteSpace(homeAccountId) ? null : homeAccountId;
 
         if (!options.IsConfigured)
         {
@@ -118,11 +132,21 @@ public sealed class Microsoft365Authenticator : IAsyncDisposable
         }
     }
 
+    /// <summary>
+    /// Signs out this instance's account, leaving any other signed in.
+    /// </summary>
+    /// <remarks>
+    /// Scoped deliberately. Removing every cached account would mean that disconnecting a
+    /// personal calendar silently signed the user out of their work one too, which is not what
+    /// "remove this calendar" says. When no account was named there is only one to remove.
+    /// </remarks>
     public async Task SignOutAsync(CancellationToken cancellationToken)
     {
         await EnsureCacheAsync().ConfigureAwait(false);
 
-        foreach (var account in await _application.GetAccountsAsync().ConfigureAwait(false))
+        var accounts = await _application.GetAccountsAsync().ConfigureAwait(false);
+
+        foreach (var account in accounts.Where(Matches))
         {
             cancellationToken.ThrowIfCancellationRequested();
             await _application.RemoveAsync(account).ConfigureAwait(false);
@@ -144,11 +168,23 @@ public sealed class Microsoft365Authenticator : IAsyncDisposable
     private Task<AuthenticationResult> AcquireSilentAsync(IAccount account, CancellationToken cancellationToken) =>
         _application.AcquireTokenSilent(_options.Scopes, account).ExecuteAsync(cancellationToken);
 
+    /// <summary>Whether a cached account is the one this instance speaks for.</summary>
+    /// <remarks>
+    /// With no account named, any will do, which is the single-account case. With one named,
+    /// only that one: matching loosely here is what would make two connected accounts show
+    /// each other's calendars.
+    /// </remarks>
+    private bool Matches(IAccount account) =>
+        _homeAccountId is null ||
+        string.Equals(account.HomeAccountId?.Identifier, _homeAccountId, StringComparison.Ordinal);
+
     private async Task<IAccount?> FirstAccountAsync()
     {
         await EnsureCacheAsync().ConfigureAwait(false);
 
-        return (await _application.GetAccountsAsync().ConfigureAwait(false)).FirstOrDefault();
+        var accounts = await _application.GetAccountsAsync().ConfigureAwait(false);
+
+        return accounts.FirstOrDefault(Matches);
     }
 
     /// <summary>

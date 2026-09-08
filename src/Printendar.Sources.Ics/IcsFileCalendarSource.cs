@@ -1,10 +1,7 @@
-using Printendar.Core.Model;
-using Printendar.Core.Sources;
-
 namespace Printendar.Sources.Ics;
 
 /// <summary>
-/// A calendar read from one or more .ics files on disk.
+/// A calendar read from an .ics file on this computer.
 /// </summary>
 /// <remarks>
 /// The route that needs nothing: no account, no administrator approval, no network. Export a
@@ -13,28 +10,22 @@ namespace Printendar.Sources.Ics;
 /// they download it, and the fallback for anyone whose organisation will not approve a third
 /// party application.
 /// </remarks>
-public sealed class IcsFileCalendarSource : ICalendarSource
+public sealed class IcsFileCalendarSource(string sourceId, string displayName, string path)
+    : IcsSourceBase(sourceId, displayName)
 {
+    public string Path { get; } = path;
+
+    public override string ProviderName => "Calendar file";
+
     /// <summary>
-    /// Refuses a file large enough to suggest something other than a calendar.
+    /// Checks a file is worth adding, and returns the name to show for it.
     /// </summary>
     /// <remarks>
-    /// A year of a busy calendar is a few hundred kilobytes. Twenty megabytes means a mistake,
-    /// and reading it would freeze the window with no explanation.
+    /// Separate from reading so the user is told at the moment they pick the file, rather than
+    /// when they next print. An .ics that is missing or absurdly large is a mistake worth
+    /// catching while they still remember which file they meant.
     /// </remarks>
-    private const long MaxFileBytes = 20L * 1024 * 1024;
-
-    private readonly List<IcsFile> _files = [];
-
-    private sealed record IcsFile(string Id, string DisplayName, string Path);
-
-    public string SourceId => "ics";
-
-    public string ProviderName => "Calendar file";
-
-    /// <summary>Adds a file, returning the calendar it becomes.</summary>
-    /// <exception cref="InvalidOperationException">The file is missing, too large, or not a calendar.</exception>
-    public CalendarRef AddFile(string path)
+    public static string Validate(string path)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(path);
 
@@ -45,72 +36,26 @@ public sealed class IcsFileCalendarSource : ICalendarSource
             throw new InvalidOperationException($"There is no file at {path}.");
         }
 
-        if (info.Length > MaxFileBytes)
+        if (info.Length > MaxBytes)
         {
             throw new InvalidOperationException(
-                $"That file is {info.Length / (1024 * 1024)} MB, which is far larger than a calendar should be. " +
-                "Check it is the .ics file you meant to open.");
+                $"That file is {info.Length / (1024 * 1024)} MB, which is far larger than a calendar " +
+                "should be. Check it is the .ics file you meant to open.");
         }
 
-        var id = info.FullName;
-        var name = Path.GetFileNameWithoutExtension(info.Name);
-
-        _files.RemoveAll(f => string.Equals(f.Id, id, StringComparison.OrdinalIgnoreCase));
-        _files.Add(new IcsFile(id, name, info.FullName));
-
-        return new CalendarRef(SourceId, id, name, IsDefault: _files.Count == 1);
+        return System.IO.Path.GetFileNameWithoutExtension(info.Name);
     }
 
-    public ValueTask<AuthState> GetAuthStateAsync(CancellationToken cancellationToken) =>
-        ValueTask.FromResult(AuthState.Connected);
-
-    public Task<AccountInfo> ConnectAsync(CancellationToken cancellationToken) =>
-        Task.FromResult(new AccountInfo("Calendar files", null));
-
-    public Task SignOutAsync(CancellationToken cancellationToken)
+    protected override async Task<string> ReadContentAsync(CancellationToken cancellationToken)
     {
-        _files.Clear();
-        return Task.CompletedTask;
-    }
-
-    public Task<IReadOnlyList<CalendarRef>> ListCalendarsAsync(CancellationToken cancellationToken) =>
-        Task.FromResult<IReadOnlyList<CalendarRef>>(
-            [.. _files.Select((f, i) => new CalendarRef(SourceId, f.Id, f.DisplayName, i == 0))]);
-
-    public async Task<IReadOnlyList<CalendarEvent>> GetEventsAsync(
-        IReadOnlyList<CalendarRef> calendars,
-        DateSpan window,
-        TimeZoneInfo displayZone,
-        CancellationToken cancellationToken)
-    {
-        ArgumentNullException.ThrowIfNull(calendars);
-
-        var events = new List<CalendarEvent>();
-
-        foreach (var calendar in calendars)
+        if (!File.Exists(Path))
         {
-            var file = _files.FirstOrDefault(f =>
-                string.Equals(f.Id, calendar.CalendarId, StringComparison.OrdinalIgnoreCase));
-
-            if (file is null)
-            {
-                continue;
-            }
-
-            // Read fresh each time rather than caching. The file is on disk and may have been
-            // re-exported since, and a calendar showing last week's export with no way to tell
-            // is worse than reading a few hundred kilobytes again.
-            var content = await File.ReadAllTextAsync(file.Path, cancellationToken).ConfigureAwait(false);
-
-            events.AddRange(IcsCalendarReader.Read(content, file.Id, window, displayZone));
+            // The usual way this source breaks: the file was moved or the drive is not
+            // connected. Saying which file beats an IOException the user cannot place.
+            throw new InvalidOperationException(
+                $"{System.IO.Path.GetFileName(Path)} is no longer at {System.IO.Path.GetDirectoryName(Path)}.");
         }
 
-        return events;
-    }
-
-    public ValueTask DisposeAsync()
-    {
-        _files.Clear();
-        return ValueTask.CompletedTask;
+        return await File.ReadAllTextAsync(Path, cancellationToken).ConfigureAwait(false);
     }
 }

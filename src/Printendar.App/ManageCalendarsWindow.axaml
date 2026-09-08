@@ -1,0 +1,90 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="clr-namespace:Printendar.App"
+        xmlns:src="clr-namespace:Printendar.App.Sources"
+        x:Class="Printendar.App.ManageCalendarsWindow"
+        x:DataType="src:CalendarSourcesViewModel"
+        Title="Calendars"
+        Width="720" Height="560"
+        MinWidth="560" MinHeight="420"
+        WindowStartupLocation="CenterOwner">
+
+  <Window.Styles>
+    <Style Selector="TextBlock.hint">
+      <Setter Property="TextWrapping" Value="Wrap" />
+      <Setter Property="FontSize" Value="11" />
+      <Setter Property="Opacity" Value="0.65" />
+    </Style>
+  </Window.Styles>
+
+  <DockPanel Margin="16">
+
+    <Border DockPanel.Dock="Bottom" Margin="0,12,0,0">
+      <Grid ColumnDefinitions="*,Auto">
+        <TextBlock Grid.Column="0" Name="Message"
+                   TextWrapping="Wrap" FontSize="11"
+                   VerticalAlignment="Center" Margin="0,0,12,0" />
+        <Button Grid.Column="1" Name="CloseButton" Content="Done" Width="90" Classes="accent" />
+      </Grid>
+    </Border>
+
+    <!-- Adding is the reason most people open this window, so it is the first thing here
+         rather than a menu item to go hunting for. -->
+    <StackPanel DockPanel.Dock="Top" Margin="0,0,0,14">
+      <TextBlock Text="ADD A CALENDAR" FontWeight="SemiBold" FontSize="12" Opacity="0.75" Margin="0,0,0,6" />
+      <WrapPanel>
+        <Button Name="AddMicrosoft" Content="Microsoft 365 / Outlook" Margin="0,0,8,8" />
+        <Button Name="AddGoogle" Content="Google Calendar" Margin="0,0,8,8" />
+        <Button Name="AddUrl" Content="Web address (.ics)" Margin="0,0,8,8" />
+        <Button Name="AddFile" Content="File on this computer (.ics)" Margin="0,0,8,8" />
+      </WrapPanel>
+      <TextBlock Name="AddHint" Classes="hint" />
+    </StackPanel>
+
+    <TextBlock DockPanel.Dock="Top" Text="CONNECTED" FontWeight="SemiBold" FontSize="12"
+               Opacity="0.75" Margin="0,0,0,6" />
+
+    <Border BorderBrush="{DynamicResource SystemBaseLowColor}" BorderThickness="1" CornerRadius="4">
+      <ScrollViewer>
+        <StackPanel Margin="10">
+
+          <TextBlock Classes="hint"
+                     IsVisible="{Binding HasNoSources}"
+                     Text="Nothing added yet. Use one of the buttons above." />
+
+          <ItemsControl ItemsSource="{Binding Sources}">
+            <ItemsControl.ItemTemplate>
+              <DataTemplate x:DataType="src:SourceEntry">
+                <Border Padding="10" Margin="0,0,0,8" CornerRadius="4"
+                        Background="{DynamicResource SystemAltMediumLowColor}">
+                  <Grid ColumnDefinitions="*,Auto,Auto">
+                    <StackPanel Grid.Column="0">
+                      <TextBox Text="{Binding EditableName}" FontWeight="SemiBold"
+                               BorderThickness="0" Padding="0" Background="Transparent"
+                               ToolTip.Tip="Rename this calendar" />
+                      <TextBlock Text="{Binding KindLabel}" FontSize="10" Opacity="0.55" />
+                      <TextBlock Text="{Binding Error}"
+                                 IsVisible="{Binding HasError}"
+                                 FontSize="11" Foreground="#a30000"
+                                 TextWrapping="Wrap" Margin="0,4,0,0" />
+                    </StackPanel>
+
+                    <Button Grid.Column="1" Content="Reconnect" Margin="8,0,0,0"
+                            Command="{Binding ReconnectCommand}"
+                            CommandParameter="{Binding}" />
+
+                    <Button Grid.Column="2" Content="Remove" Margin="8,0,0,0"
+                            Command="{Binding RemoveCommand}"
+                            CommandParameter="{Binding}" />
+                  </Grid>
+                </Border>
+              </DataTemplate>
+            </ItemsControl.ItemTemplate>
+          </ItemsControl>
+
+        </StackPanel>
+      </ScrollViewer>
+    </Border>
+
+  </DockPanel>
+</Window>

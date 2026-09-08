@@ -41,15 +41,30 @@ public sealed class GraphCalendarSource : ICalendarSource
     private readonly HttpClient _http;
     private readonly bool _ownsHttp;
 
-    public GraphCalendarSource(Microsoft365Options options, HttpClient? http = null)
+    private readonly string _sourceId;
+
+    /// <param name="sourceId">
+    /// Distinguishes this account from other Microsoft accounts. Events and calendars are
+    /// attributed by it, so two accounts sharing one id would merge into each other and the
+    /// aggregator could not say which of them failed.
+    /// </param>
+    public GraphCalendarSource(
+        Microsoft365Options options,
+        string? sourceId = null,
+        string? homeAccountId = null,
+        HttpClient? http = null)
     {
         _options = options;
-        _authenticator = new Microsoft365Authenticator(options);
+        _sourceId = string.IsNullOrWhiteSpace(sourceId) ? "microsoft365" : sourceId;
+        _authenticator = new Microsoft365Authenticator(options, homeAccountId);
         _http = http ?? new HttpClient();
         _ownsHttp = http is null;
     }
 
-    public string SourceId => "microsoft365";
+    public string SourceId => _sourceId;
+
+    /// <summary>MSAL's identifier for the account that signed in, once one has.</summary>
+    public string? HomeAccountId { get; private set; }
 
     public string ProviderName => "Microsoft 365";
 
@@ -64,6 +79,10 @@ public sealed class GraphCalendarSource : ICalendarSource
                 .ConfigureAwait(false);
 
             var account = result.Account;
+
+            // Kept so the caller can store which account this is. Two Microsoft accounts are
+            // told apart by this and nothing else.
+            HomeAccountId = account.HomeAccountId?.Identifier;
 
             return new AccountInfo(
                 account.Username ?? "Signed in",

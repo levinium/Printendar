@@ -2,6 +2,7 @@ using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Globalization;
 using System.Runtime.CompilerServices;
+using Printendar.App.Sources;
 using Printendar.Core.Layout;
 using Printendar.Core.Layout.Fit;
 using Printendar.Core.Layout.Month;
@@ -45,7 +46,13 @@ public sealed class MainViewModel : INotifyPropertyChanged
     private IReadOnlyList<CalendarEvent> _events = [];
     private IReadOnlyList<CalendarLegendEntry> _calendars = [];
 
-    public MainViewModel() => Relayout();
+    public MainViewModel()
+    {
+        // Created eagerly so bindings have something to attach to before settings are read.
+        // An empty list is the correct starting state; loading replaces it.
+        Sources = new CalendarSourcesViewModel(_settingsStore, _settings);
+        Relayout();
+    }
 
     public event PropertyChangedEventHandler? PropertyChanged;
 
@@ -217,17 +224,26 @@ public sealed class MainViewModel : INotifyPropertyChanged
 
     // ------------------------------------------------------------------ calendar source
 
-    private ICalendarSource? _source;
     private bool _isBusy;
-    private string? _accountLabel;
 
-    public ObservableCollection<SelectableCalendar> Calendars { get; } = [];
+    /// <summary>
+    /// The calendars somebody has added, and reading them.
+    /// </summary>
+    /// <remarks>
+    /// Its own object rather than more properties here. This class already carries the page,
+    /// the paper, the fit policy and the Microsoft setup; account management is a separate
+    /// concern with its own persistence and its own window.
+    /// </remarks>
+    public CalendarSourcesViewModel Sources { get; private set; }
 
     // ------------------------------------------------------------------ Microsoft setup
 
     private readonly SettingsStore _settingsStore = new(new DesktopSettingsLocation());
     private AppSettings _settings = new();
     private bool _showMicrosoftSetup;
+
+    /// <summary>What is saved right now, for windows that need to read it.</summary>
+    public AppSettings Settings => _settings;
 
     /// <summary>The registration sign-in will use, given what is saved right now.</summary>
     public Microsoft365Options MicrosoftOptions => Microsoft365Options.Resolve(_settings);
@@ -311,8 +327,13 @@ public sealed class MainViewModel : INotifyPropertyChanged
         ShowMicrosoftSetup = false;
     }
 
-    /// <summary>Loads saved settings. Called once, when the window is being built.</summary>
-    public void LoadSettings()
+    /// <summary>Loads saved settings and the calendars that were added last time.</summary>
+    /// <remarks>
+    /// Called once while the window is being built. The calendars are opened afterwards and
+    /// asynchronously, because a feed that is slow to answer must not hold up the window
+    /// appearing.
+    /// </remarks>
+    public async Task LoadSettingsAsync()
     {
         _settings = _settingsStore.Load();
 
@@ -321,6 +342,18 @@ public sealed class MainViewModel : INotifyPropertyChanged
         Raise(nameof(IsMicrosoftConfigured));
         Raise(nameof(IsMicrosoftNotConfigured));
         Raise(nameof(MicrosoftAdminConsentUrl));
+
+        Sources = new CalendarSourcesViewModel(_settingsStore, _settings);
+        Sources.Changed += (_, _) =>
+        {
+            Raise(nameof(HasNoSources));
+            _ = RefreshEventsAsync();
+        };
+
+        Raise(nameof(Sources));
+        Raise(nameof(HasNoSources));
+
+        await Sources.LoadAsync().ConfigureAwait(true);
     }
 
     /// <summary>True while talking to the provider, so the window can disable its controls.</summary>
@@ -337,78 +370,12 @@ public sealed class MainViewModel : INotifyPropertyChanged
 
     public bool IsNotBusy => !_isBusy;
 
-    /// <summary>Who is signed in, or null when nobody is.</summary>
-    public string? AccountLabel
-    {
-        get => _accountLabel;
-        private set
-        {
-            _accountLabel = value;
-            Raise(nameof(AccountLabel));
-            Raise(nameof(IsConnected));
-            Raise(nameof(IsNotConnected));
-        }
-    }
-
-    public bool IsConnected => _accountLabel is not null;
-
-    public bool IsNotConnected => _accountLabel is null;
-
-    /// <summary>
-    /// Signs in and loads the account's calendars.
-    /// </summary>
+    /// <summary>Whether anything has been added yet.</summary>
     /// <remarks>
-    /// The sample month stays on screen until real events arrive, so the window never falls
-    /// back to an empty grid that looks like something went wrong.
+    /// Drives the empty state. Before anything is connected the window shows a sample month
+    /// rather than an empty grid, so it is obvious what the program does.
     /// </remarks>
-    public async Task ConnectAsync(ICalendarSource source, CancellationToken cancellationToken = default)
-    {
-        ArgumentNullException.ThrowIfNull(source);
-
-        IsBusy = true;
-
-        try
-        {
-            var account = await source.ConnectAsync(cancellationToken).ConfigureAwait(true);
-            var calendars = await source.ListCalendarsAsync(cancellationToken).ConfigureAwait(true);
-
-            _source = source;
-            AccountLabel = account.Email ?? account.DisplayName;
-
-            Calendars.Clear();
-
-            for (var i = 0; i < calendars.Count; i++)
-            {
-                var selectable = new SelectableCalendar(calendars[i], CalendarPalette.At(i));
-                selectable.SelectionChanged += (_, _) => _ = RefreshEventsAsync();
-                Calendars.Add(selectable);
-            }
-
-            await RefreshEventsAsync(cancellationToken).ConfigureAwait(true);
-        }
-        catch (Microsoft365SignInException ex)
-        {
-            // Already translated into advice at the source boundary.
-            AdminConsentUrl = ex.Diagnosis.AdminConsentUrl;
-
-            if (ex.Diagnosis.Problem is not SignInProblem.Cancelled)
-            {
-                Status = ex.Diagnosis.Message;
-            }
-        }
-        catch (OperationCanceledException)
-        {
-            // The user closed the browser window. Not an error worth reporting.
-        }
-        catch (Exception ex)
-        {
-            Status = $"Could not connect: {ex.Message}";
-        }
-        finally
-        {
-            IsBusy = false;
-        }
-    }
+    public bool HasNoSources => Sources.HasNoSources;
 
     private string? _adminConsentUrl;
 
@@ -438,86 +405,22 @@ public sealed class MainViewModel : INotifyPropertyChanged
     public void ClearAdminConsentPrompt() => AdminConsentUrl = null;
 
     /// <summary>
-    /// Opens one or more .ics files as the calendars to print.
+    /// Fetches the visible month from every calendar that is ticked.
     /// </summary>
     /// <remarks>
-    /// Kept separate from <see cref="ConnectAsync"/> because there is nothing to connect to:
-    /// no account, no approval, no network. That is the whole appeal of this route, and
-    /// routing it through a sign-in flow would imply otherwise.
+    /// With nothing added at all the sample month stays, so the window never shows an empty
+    /// grid that looks like something went wrong. With sources added but nothing ticked, the
+    /// grid really is empty, because that is what the user asked for.
     /// </remarks>
-    public async Task OpenCalendarFilesAsync(
-        IReadOnlyList<string> paths,
-        CancellationToken cancellationToken = default)
-    {
-        ArgumentNullException.ThrowIfNull(paths);
-
-        IsBusy = true;
-
-        try
-        {
-            var source = new IcsFileCalendarSource();
-            var added = new List<CalendarRef>();
-
-            foreach (var path in paths)
-            {
-                added.Add(source.AddFile(path));
-            }
-
-            _source = source;
-            AccountLabel = added.Count == 1
-                ? added[0].DisplayName
-                : $"{added.Count} calendar files";
-
-            Calendars.Clear();
-
-            for (var i = 0; i < added.Count; i++)
-            {
-                var selectable = new SelectableCalendar(added[i], CalendarPalette.At(i)) { IsSelected = true };
-                selectable.SelectionChanged += (_, _) => _ = RefreshEventsAsync();
-                Calendars.Add(selectable);
-            }
-
-            await RefreshEventsAsync(cancellationToken).ConfigureAwait(true);
-        }
-        catch (Exception ex)
-        {
-            Status = ex.Message;
-        }
-        finally
-        {
-            IsBusy = false;
-        }
-    }
-
-    public async Task DisconnectAsync(CancellationToken cancellationToken = default)
-    {
-        if (_source is null)
-        {
-            return;
-        }
-
-        await _source.SignOutAsync(cancellationToken).ConfigureAwait(true);
-        await _source.DisposeAsync().ConfigureAwait(true);
-
-        _source = null;
-        AccountLabel = null;
-        Calendars.Clear();
-
-        // Back to the sample month rather than an empty grid.
-        SetEvents(SampleCalendar.ForMonth(_month.Year, _month.Month), SampleCalendar.Calendars);
-    }
-
-    /// <summary>Fetches the visible month from the selected calendars.</summary>
     public async Task RefreshEventsAsync(CancellationToken cancellationToken = default)
     {
-        if (_source is null)
+        if (Sources.HasNoSources)
         {
+            SetEvents(SampleCalendar.ForMonth(_month.Year, _month.Month), SampleCalendar.Calendars);
             return;
         }
 
-        var selected = Calendars.Where(c => c.IsSelected).ToList();
-
-        if (selected.Count == 0)
+        if (!Sources.AnythingSelected)
         {
             SetEvents([], []);
             return;
@@ -528,27 +431,28 @@ public sealed class MainViewModel : INotifyPropertyChanged
         try
         {
             // The grid draws days either side of the month, so those are fetched too.
-            var window = VisibleWindow();
+            var result = await Sources
+                .ReadAsync(VisibleWindow(), TimeZoneInfo.Local, cancellationToken)
+                .ConfigureAwait(true);
 
-            var events = await _source.GetEventsAsync(
-                [.. selected.Select(c => c.Reference)],
-                window,
-                TimeZoneInfo.Local,
-                cancellationToken).ConfigureAwait(true);
+            SetEvents(result.Events, Sources.Legend);
 
-            SetEvents(
-                events,
-                [.. selected.Select(c => new CalendarLegendEntry(
-                    c.Reference.CalendarId,
-                    c.DisplayName,
-                    c.Color))]);
+            // A source that failed has already put its reason against its own name in the
+            // list. The status bar only says how many, because naming four of them here would
+            // bury the fitting message that belongs to the page.
+            if (result.Failures.Count > 0)
+            {
+                Status = result.Failures.Count == 1
+                    ? $"{result.Failures[0].ProviderName} could not be read. See the calendar list."
+                    : $"{result.Failures.Count} calendars could not be read. See the calendar list.";
+            }
         }
         catch (OperationCanceledException)
         {
         }
         catch (Exception ex)
         {
-            Status = $"Could not read the calendar: {ex.Message}";
+            Status = $"Could not read the calendars: {ex.Message}";
         }
         finally
         {
