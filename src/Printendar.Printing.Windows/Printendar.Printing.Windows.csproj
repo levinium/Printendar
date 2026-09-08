@@ -1,0 +1,23 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    Windows only, and deliberately the only project in the solution that is. It exists so the
+    Print button can drive a real printer through a real print dialog instead of handing a PDF
+    to whatever viewer happens to be installed.
+
+    UseWindowsForms is here for System.Drawing.Printing: PrintDialog and PrintDocument live in
+    the Windows Desktop framework. Nothing here runs a WinForms message loop; the dialog pumps
+    its own while it is open.
+  -->
+  <PropertyGroup>
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <UseWindowsForms>true</UseWindowsForms>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="../Printendar.Core/Printendar.Core.csproj" />
+  </ItemGroup>
+
+</Project>

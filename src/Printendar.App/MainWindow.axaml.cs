@@ -161,6 +161,17 @@ public partial class MainWindow : Window
             return;
         }
 
-        PrintService.Print(scene, _model.MonthTitle, _model.Measurer);
+        var outcome = PrintService.Print(
+            scene,
+            _model.MonthTitle,
+            _model.Measurer,
+            (float)_model.MarginInches);
+
+        // Cancelling carries no message, and saying "cancelled" back to somebody who just
+        // pressed Cancel is noise.
+        if (outcome.Message is { } message)
+        {
+            _model.ReportProblem(message);
+        }
     }
 }

@@ -1,6 +1,7 @@
 using System.Diagnostics;
 using System.Runtime.InteropServices;
 using Printendar.Core.Export;
+using Printendar.Core.Printing;
 using Printendar.Core.Scene;
 using Printendar.Core.Text;
 
@@ -10,30 +11,54 @@ namespace Printendar.App.Printing;
 /// Gets a laid-out page to a printer.
 /// </summary>
 /// <remarks>
-/// Avalonia has no printing of its own, so every platform goes through the PDF. That is not
-/// purely a workaround: the PDF is the artifact anyway, it is vector with selectable text, and
-/// handing it to the operating system means the user gets their own familiar print dialog with
-/// their own printers, paper trays and driver settings, rather than a reimplementation.
+/// On Windows this is a real print dialog driving a real printer, straight from the scene.
 ///
-/// The page size is baked into the PDF, so the print dialog opens already set to landscape.
-/// That is the specific thing new Outlook cannot do and the reason this program exists, so it
-/// must not be left to the user to set.
-///
-/// A native Windows print dialog driven directly from the scene is a later refinement. It
-/// would remove the trip through a viewer, and the scene graph means it can be added without
-/// touching layout.
+/// Everywhere else it still writes a PDF and asks the operating system to open it, because
+/// Avalonia has no printing of its own. That fallback is worth being honest about: it is not
+/// printing, it is handing the user to a viewer whose own dialog decides the scale. A viewer
+/// left on "fit to page" will quietly shrink a layout that was measured against the paper. The
+/// button says so on those platforms rather than pretending otherwise.
 /// </remarks>
 public static class PrintService
 {
-    public static void Print(ScenePage scene, string title, ITextMeasurer measurer)
+    /// <summary>
+    /// Whether this build can drive a printer itself.
+    /// </summary>
+    /// <remarks>
+    /// Used to label the button honestly. A control that says "Print" and opens a PDF reader
+    /// is the kind of small lie that costs a non-technical user their trust in the whole app.
+    /// </remarks>
+    public static bool CanPrintDirectly => Printer is not null;
+
+    private static IPlatformPrinter? Printer =>
+#if WINDOWS
+        new Printendar.Printing.Windows.WindowsPrintService();
+#else
+        null;
+#endif
+
+    public static PrintOutcome Print(
+        ScenePage scene,
+        string title,
+        ITextMeasurer measurer,
+        float layoutMarginInches)
     {
         ArgumentNullException.ThrowIfNull(scene);
+
+        if (Printer is { } printer)
+        {
+            return printer.Print(scene, title, measurer, layoutMarginInches);
+        }
 
         var path = Path.Combine(Path.GetTempPath(), $"{Sanitize(title)}.pdf");
 
         PdfExporter.ExportToFile(scene, path, PdfMetadata.Default with { Title = title }, measurer);
 
         OpenInDefaultViewer(path);
+
+        return PrintOutcome.Success(
+            "Opened in your PDF viewer. Print from there, and set it to Actual size rather " +
+            "than Fit to page, or the layout will be shrunk.");
     }
 
     private static void OpenInDefaultViewer(string path)

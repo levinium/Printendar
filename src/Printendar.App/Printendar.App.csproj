@@ -2,7 +2,16 @@
 
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
-    <TargetFramework>net10.0</TargetFramework>
+    <!--
+      Two frameworks so Windows can drive a printer directly while the app stays genuinely
+      cross-platform. The -windows build picks up Printendar.Printing.Windows and its real
+      print dialog; the plain build falls back to handing the PDF to the operating system.
+
+      The split is compile-time, through a conditional ProjectReference and the WINDOWS symbol
+      the SDK defines for the -windows framework. No reflection and no plugin loading, so a
+      mistake here is a build error rather than a missing button at runtime.
+    -->
+    <TargetFrameworks>net10.0;net10.0-windows</TargetFrameworks>
     <RootNamespace>Printendar.App</RootNamespace>
     <AssemblyName>Printendar</AssemblyName>
     <ApplicationManifest>app.manifest</ApplicationManifest>
@@ -28,6 +37,11 @@
     <ProjectReference Include="..\Printendar.Core\Printendar.Core.csproj" />
     <ProjectReference Include="..\Printendar.Sources.Microsoft365\Printendar.Sources.Microsoft365.csproj" />
     <ProjectReference Include="..\Printendar.Sources.Ics\Printendar.Sources.Ics.csproj" />
+  </ItemGroup>
+
+  <!-- Only the Windows build gets the printing shim. Everything else must not see it. -->
+  <ItemGroup Condition="'$(TargetFramework)' == 'net10.0-windows'">
+    <ProjectReference Include="..\Printendar.Printing.Windows\Printendar.Printing.Windows.csproj" />
   </ItemGroup>
 
 </Project>

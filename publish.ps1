@@ -52,8 +52,13 @@ New-Item -ItemType Directory -Force -Path $stage | Out-Null
 
 Write-Host "Publishing $Runtime..." -ForegroundColor Cyan
 
+# The Windows build must come from the net10.0-windows framework, or it ships without the
+# real print dialog and the Print button silently falls back to opening a PDF viewer.
+$framework = if ($Runtime -like 'win-*') { 'net10.0-windows' } else { 'net10.0' }
+
 dotnet publish (Join-Path $root 'src/Printendar.App/Printendar.App.csproj') `
     -c Release `
+    -f $framework `
     -r $Runtime `
     --self-contained true `
     -p:PublishSingleFile=false `
