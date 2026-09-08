@@ -2,6 +2,8 @@
 
 Print a calendar month onto a single landscape sheet of paper.
 
+[![CI](https://github.com/levinium/Printendar/actions/workflows/ci.yml/badge.svg)](https://github.com/levinium/Printendar/actions/workflows/ci.yml)
+
 ## Why this exists
 
 Classic Outlook could do this. File > Print, Monthly Style, Page Setup, landscape, one page.
@@ -16,10 +18,11 @@ Printendar is the missing tool. It reads your calendars, lays a month out agains
 - Several calendars merged onto the same grid, color coded, with a printed legend.
 - Sensible handling when a day has more events than will fit: shrink the text to a readable floor, then show "+3 more" rather than silently clipping.
 - Weekend handling: a full seven-day grid, Saturday and Sunday compressed into one column, or weekdays only.
-- Filters for the noise: hide declined, tentative, cancelled or private events, or filter by keyword or category.
-- Save as PDF, or print directly.
+- Save as PDF, or send it straight to your system's print dialog, already set to landscape.
 
-Calendar sources: Microsoft 365 and Outlook, Google Calendar, and ICS (a file, or a subscription URL).
+Calendar sources today: **Microsoft 365 and Outlook.com**, and **`.ics` calendar files** from
+anywhere. Google Calendar and `.ics` subscription URLs are planned; see Status below for what
+is and is not built.
 
 ## Opening a calendar file
 
@@ -74,8 +77,22 @@ Not done yet:
 - Only the month view exists. A blank grid, a week, an agenda and a tri-fold are planned.
 - A multi-day event repeats as a chip on each day it covers, rather than drawing as one
   spanning bar.
-- Builds are tested on Windows. The code carries no platform dependency and is written to run
-  on macOS and Linux, but that has not been verified on real machines yet.
+- The desktop window has only been run on Windows so far. The engine underneath is built and
+  tested on all three platforms by CI, but nobody has yet opened the app itself on a Mac.
+
+## Building
+
+Requires the .NET 10 SDK.
+
+```
+dotnet build
+dotnet test
+```
+
+CI builds and runs the whole test suite on Windows, macOS and Linux. The layout tests measure
+real glyph advances rather than a stub, and they assert exact geometry, so a page that fits on
+one platform is a page that fits on all of them. That is why the font is embedded rather than
+taken from the system.
 
 ## How it fits a month onto one page
 
@@ -89,16 +106,6 @@ text stops being readable on paper, and anything still left over becomes a "+3 m
 So the guarantee is one page, always, and the trade-off it made is reported to you in words
 rather than left for you to discover at the printer.
 
-## Building
-
-Requires the .NET 10 SDK.
-
-```
-dotnet build
-dotnet test
-```
-
-Core and its tests carry no platform dependency and are built and tested on Windows, macOS and Linux in CI.
 
 ## License
 
