@@ -24,6 +24,7 @@
   </PropertyGroup>
 
   <PropertyGroup>
+    <Version>0.1.0</Version>
     <Product>Printendar</Product>
     <Authors>levinium</Authors>
     <Copyright>Copyright (c) Printendar contributors</Copyright>

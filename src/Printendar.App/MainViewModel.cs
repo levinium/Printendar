@@ -209,6 +209,18 @@ public sealed class MainViewModel : INotifyPropertyChanged
 
     public ObservableCollection<SelectableCalendar> Calendars { get; } = [];
 
+    /// <summary>
+    /// Whether this build carries a Microsoft application id.
+    /// </summary>
+    /// <remarks>
+    /// Checked up front rather than on click. A button that looks available and then reports
+    /// that the build cannot sign in wastes the user's time and reads like a fault; a disabled
+    /// button with a sentence explaining why does not.
+    /// </remarks>
+    public bool IsMicrosoftConfigured { get; } = Microsoft365Options.FromEnvironment().IsConfigured;
+
+    public bool IsMicrosoftNotConfigured => !IsMicrosoftConfigured;
+
     /// <summary>True while talking to the provider, so the window can disable its controls.</summary>
     public bool IsBusy
     {

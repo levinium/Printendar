@@ -66,7 +66,10 @@
           <Button Name="ConnectMicrosoft"
                   Content="Connect Microsoft 365"
                   HorizontalAlignment="Stretch"
-                  IsEnabled="{Binding IsNotBusy}" />
+                  IsEnabled="{Binding IsMicrosoftConfigured}" />
+          <TextBlock Classes="hint"
+                     IsVisible="{Binding IsMicrosoftNotConfigured}"
+                     Text="This build cannot sign in to Microsoft 365 yet. Open a calendar file below instead, which needs no account at all." />
           <!-- Needs no account and no approval from anybody, so it is offered alongside
                rather than buried: for a lot of people it is the only route that works. -->
           <Button Name="OpenIcsFile"
