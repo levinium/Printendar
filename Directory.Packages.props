@@ -6,16 +6,34 @@
 
   <ItemGroup>
     <!--
-      SkiaSharp is pinned centrally on purpose. Layout is computed from glyph advances, so
-      a version drift here can move every measurement in the product at once. The three
-      NativeAssets packages are named explicitly so a self-contained publish works for any
-      RID rather than only the host's.
+      SkiaSharp is pinned centrally on purpose. Layout is computed from glyph advances, so a
+      version drift here can move every measurement in the product at once. The three
+      NativeAssets packages are named explicitly so a self-contained publish works for any RID
+      rather than only the host's.
+
+      DO NOT bump this to 4.x independently of Avalonia. Avalonia 12.1.2 is built against
+      SkiaSharp 3.119.4, and the preview control draws Printendar's scene straight onto the
+      SKCanvas it leases from Avalonia's renderer. If Core and Avalonia resolve different
+      SkiaSharp majors, that lease hands back an SKCanvas from the other assembly: a different
+      CLR type, so the preview does not compile, and two native Skia binaries ship in the same
+      process. Move this version only when Avalonia moves, and keep the two in step.
     -->
-    <PackageVersion Include="SkiaSharp" Version="4.151.2" />
-    <PackageVersion Include="SkiaSharp.NativeAssets.Win32" Version="4.151.2" />
-    <PackageVersion Include="SkiaSharp.NativeAssets.macOS" Version="4.151.2" />
-    <PackageVersion Include="SkiaSharp.NativeAssets.Linux" Version="4.151.2" />
-    <PackageVersion Include="SkiaSharp.NativeAssets.Linux.NoDependencies" Version="4.151.2" />
+    <PackageVersion Include="SkiaSharp" Version="3.119.4" />
+    <PackageVersion Include="SkiaSharp.NativeAssets.Win32" Version="3.119.4" />
+    <PackageVersion Include="SkiaSharp.NativeAssets.macOS" Version="3.119.4" />
+    <PackageVersion Include="SkiaSharp.NativeAssets.Linux" Version="3.119.4" />
+    <PackageVersion Include="SkiaSharp.NativeAssets.Linux.NoDependencies" Version="3.119.4" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!--
+      Avalonia and SkiaSharp move together. See the note above before changing either.
+    -->
+    <PackageVersion Include="Avalonia" Version="12.1.2" />
+    <PackageVersion Include="Avalonia.Desktop" Version="12.1.2" />
+    <PackageVersion Include="Avalonia.Themes.Fluent" Version="12.1.2" />
+    <PackageVersion Include="Avalonia.Skia" Version="12.1.2" />
+    <PackageVersion Include="Avalonia.Headless.XUnit" Version="12.1.2" />
   </ItemGroup>
 
   <ItemGroup>

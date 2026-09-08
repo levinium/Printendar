@@ -3,6 +3,7 @@ using Printendar.Core.Layout;
 using Printendar.Core.Layout.Month;
 using Printendar.Core.Paper;
 using Printendar.Core.Render;
+using Printendar.Core.Samples;
 using Printendar.Core.Text;
 
 namespace Printendar.Cli;
@@ -39,8 +40,8 @@ internal static class RenderCommand
         {
             layout = layout with
             {
-                Events = DemoCalendar.ForMonth(request.Month.Year, request.Month.Month),
-                Calendars = DemoCalendar.Calendars,
+                Events = SampleCalendar.ForMonth(request.Month.Year, request.Month.Month),
+                Calendars = SampleCalendar.Calendars,
             };
         }
 

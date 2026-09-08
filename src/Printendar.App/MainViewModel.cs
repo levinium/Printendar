@@ -1,0 +1,274 @@
+using System.Collections.ObjectModel;
+using System.ComponentModel;
+using System.Globalization;
+using System.Runtime.CompilerServices;
+using Printendar.Core.Layout;
+using Printendar.Core.Layout.Fit;
+using Printendar.Core.Layout.Month;
+using Printendar.Core.Model;
+using Printendar.Core.Paper;
+using Printendar.Core.Scene;
+using Printendar.Core.Text;
+
+namespace Printendar.App;
+
+/// <summary>
+/// The state behind the window: what to print, and the page that results.
+/// </summary>
+/// <remarks>
+/// Lays out exactly once per change and keeps the resulting <see cref="ScenePage"/>. The
+/// preview draws that object and every export writes that same object, so the two cannot
+/// disagree about what is on the page.
+/// </remarks>
+public sealed class MainViewModel : INotifyPropertyChanged
+{
+    private readonly SkiaTextMeasurer _measurer = SkiaTextMeasurer.CreateWithEmbeddedFont();
+    private readonly MonthGridStyle _style = new();
+
+    private DateOnly _month = new(DateTime.Today.Year, DateTime.Today.Month, 1);
+    private PaperSize _paper = PaperSizes.Letter;
+    private Orientation _orientation = Orientation.Landscape;
+    private double _marginInches = 0.4;
+    private DayOfWeek _weekStart = DayOfWeek.Sunday;
+    private WeekendMode _weekendMode = WeekendMode.FullSevenDay;
+    private AdjacentDayMode _adjacentDays = AdjacentDayMode.Muted;
+    private FitPolicy _fitPolicy = FitPolicy.Hybrid;
+    private bool _showStartTimes = true;
+    private ScenePage? _scene;
+    private string _status = string.Empty;
+
+    private IReadOnlyList<CalendarEvent> _events = [];
+    private IReadOnlyList<CalendarLegendEntry> _calendars = [];
+
+    public MainViewModel() => Relayout();
+
+    public event PropertyChangedEventHandler? PropertyChanged;
+
+    public ITextMeasurer Measurer => _measurer;
+
+    // The pickers bind to Choice wrappers, never to the enums themselves. "FullSevenDay" is a
+    // fine identifier and a useless label.
+    public ObservableCollection<PaperSize> PaperSizeChoices { get; } = [.. PaperSizes.All];
+
+    public ObservableCollection<Choice<Orientation>> OrientationChoices { get; } = [.. Choices.Orientations];
+
+    public ObservableCollection<Choice<DayOfWeek>> WeekStartChoices { get; } = [.. Choices.WeekStarts];
+
+    public ObservableCollection<Choice<WeekendMode>> WeekendModeChoices { get; } = [.. Choices.WeekendModes];
+
+    public ObservableCollection<Choice<FitPolicy>> FitPolicyChoices { get; } = [.. Choices.FitPolicies];
+
+    public ObservableCollection<Choice<AdjacentDayMode>> AdjacentDayChoices { get; } = [.. Choices.AdjacentDays];
+
+    public Choice<Orientation> SelectedOrientation
+    {
+        get => Choices.For(Choices.Orientations, Orientation);
+        set => Orientation = value.Value;
+    }
+
+    public Choice<DayOfWeek> SelectedWeekStart
+    {
+        get => Choices.For(Choices.WeekStarts, WeekStart);
+        set => WeekStart = value.Value;
+    }
+
+    public Choice<WeekendMode> SelectedWeekendMode
+    {
+        get => Choices.For(Choices.WeekendModes, WeekendMode);
+        set => WeekendMode = value.Value;
+    }
+
+    public Choice<FitPolicy> SelectedFitPolicy
+    {
+        get => Choices.For(Choices.FitPolicies, FitPolicy);
+        set => FitPolicy = value.Value;
+    }
+
+    public Choice<AdjacentDayMode> SelectedAdjacentDays
+    {
+        get => Choices.For(Choices.AdjacentDays, AdjacentDays);
+        set => AdjacentDays = value.Value;
+    }
+
+    /// <summary>Explains the currently selected fit policy, under the picker.</summary>
+    public string? FitPolicyDescription => SelectedFitPolicy.Description;
+
+    /// <summary>Explains the currently selected weekend mode, under the picker.</summary>
+    public string? WeekendModeDescription => SelectedWeekendMode.Description;
+
+    public DateOnly Month
+    {
+        get => _month;
+        set => Set(ref _month, value, [nameof(MonthTitle)]);
+    }
+
+    public string MonthTitle => _month.ToDateTime(TimeOnly.MinValue).ToString("MMMM yyyy", CultureInfo.CurrentCulture);
+
+    public PaperSize Paper
+    {
+        get => _paper;
+        set => Set(ref _paper, value);
+    }
+
+    public Orientation Orientation
+    {
+        get => _orientation;
+        set => Set(ref _orientation, value, [nameof(SelectedOrientation)]);
+    }
+
+    public double MarginInches
+    {
+        get => _marginInches;
+        set => Set(ref _marginInches, value);
+    }
+
+    public DayOfWeek WeekStart
+    {
+        get => _weekStart;
+        set => Set(ref _weekStart, value, [nameof(CanCompressWeekend), nameof(SelectedWeekStart)]);
+    }
+
+    /// <summary>
+    /// Whether compressing the weekend into one column is coherent right now.
+    /// </summary>
+    /// <remarks>
+    /// With a Sunday week start the weekend sits at both ends of the grid, so there is no
+    /// single column to compress. The option is disabled rather than allowed to fail.
+    /// </remarks>
+    public bool CanCompressWeekend => _weekStart is DayOfWeek.Monday;
+
+    public WeekendMode WeekendMode
+    {
+        get => _weekendMode;
+        set => Set(ref _weekendMode, value, [nameof(SelectedWeekendMode), nameof(WeekendModeDescription)]);
+    }
+
+    public AdjacentDayMode AdjacentDays
+    {
+        get => _adjacentDays;
+        set => Set(ref _adjacentDays, value, [nameof(SelectedAdjacentDays)]);
+    }
+
+    public FitPolicy FitPolicy
+    {
+        get => _fitPolicy;
+        set => Set(ref _fitPolicy, value, [nameof(SelectedFitPolicy), nameof(FitPolicyDescription)]);
+    }
+
+    public bool ShowStartTimes
+    {
+        get => _showStartTimes;
+        set => Set(ref _showStartTimes, value);
+    }
+
+    /// <summary>The laid-out page. The preview draws this, and every export writes this.</summary>
+    public ScenePage? Scene
+    {
+        get => _scene;
+        private set
+        {
+            _scene = value;
+            Raise(nameof(Scene));
+        }
+    }
+
+    /// <summary>A plain-language account of what fitting the page cost.</summary>
+    public string Status
+    {
+        get => _status;
+        private set
+        {
+            _status = value;
+            Raise(nameof(Status));
+        }
+    }
+
+    public void ShowMonth(DateOnly month) => Month = month;
+
+    public void StepMonth(int months) => Month = _month.AddMonths(months);
+
+    /// <summary>Replaces the events on show and relays out.</summary>
+    public void SetEvents(
+        IReadOnlyList<CalendarEvent> events,
+        IReadOnlyList<CalendarLegendEntry> calendars)
+    {
+        _events = events;
+        _calendars = calendars;
+        Relayout();
+    }
+
+    private void Relayout()
+    {
+        // Guard the combination the grid refuses rather than letting layout throw at the user.
+        var weekend = _weekendMode is WeekendMode.CompressedWeekendColumn && !CanCompressWeekend
+            ? WeekendMode.FullSevenDay
+            : _weekendMode;
+
+        var request = new LayoutRequest(
+            Page: new PageSpec(_paper, _orientation, Margins.FromInches((float)_marginInches)),
+            Grid: new MonthGridOptions(_month.Year, _month.Month, _weekStart, weekend, _adjacentDays),
+            Culture: CultureInfo.CurrentCulture,
+            Measurer: _measurer)
+        {
+            Events = _events,
+            Calendars = _calendars,
+            Fit = FitOptions.Default with { Policy = _fitPolicy },
+            Style = MonthStyleOptions.Default with { ShowStartTime = _showStartTimes },
+        };
+
+        try
+        {
+            var scene = _style.Layout(request);
+            Scene = scene;
+            Status = DescribeFit(scene);
+        }
+        catch (ArgumentException ex)
+        {
+            // Reachable through the margin slider: margins large enough to leave no page.
+            Scene = null;
+            Status = ex.Message;
+        }
+    }
+
+    /// <summary>
+    /// Says what the layout had to do, and what the user could change about it.
+    /// </summary>
+    /// <remarks>
+    /// A number on its own ("scaled to 80%") tells someone nothing they can act on. Every
+    /// message here ends with a lever they can actually pull.
+    /// </remarks>
+    private static string DescribeFit(ScenePage scene)
+    {
+        var diagnostics = scene.Diagnostics;
+
+        if (diagnostics.Warnings.Count > 0)
+        {
+            return string.Join("  ", diagnostics.Warnings);
+        }
+
+        return diagnostics.EffectiveScale >= 0.999f
+            ? "Everything fits at full size."
+            : $"Text scaled to {diagnostics.EffectiveScale:P0} so that everything fits.";
+    }
+
+    private void Set<T>(ref T field, T value, string[]? alsoNotify = null, [CallerMemberName] string? property = null)
+    {
+        if (EqualityComparer<T>.Default.Equals(field, value))
+        {
+            return;
+        }
+
+        field = value;
+        Raise(property);
+
+        foreach (var other in alsoNotify ?? [])
+        {
+            Raise(other);
+        }
+
+        Relayout();
+    }
+
+    private void Raise(string? property) =>
+        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(property));
+}

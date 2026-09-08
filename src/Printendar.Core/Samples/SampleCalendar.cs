@@ -2,7 +2,7 @@ using Printendar.Core.Layout;
 using Printendar.Core.Model;
 using SkiaSharp;
 
-namespace Printendar.Cli;
+namespace Printendar.Core.Samples;
 
 /// <summary>
 /// Invented events across several calendars, for exercising the print engine with no account.
@@ -15,7 +15,7 @@ namespace Printendar.Cli;
 ///
 /// Seeded, so the same month always produces the same events and two runs can be compared.
 /// </remarks>
-internal static class DemoCalendar
+public static class SampleCalendar
 {
     public static IReadOnlyList<CalendarLegendEntry> Calendars { get; } =
     [

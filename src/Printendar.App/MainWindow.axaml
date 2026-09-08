@@ -1,0 +1,104 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:controls="clr-namespace:Printendar.App.Controls"
+        xmlns:vm="clr-namespace:Printendar.App"
+        xmlns:paper="clr-namespace:Printendar.Core.Paper;assembly=Printendar.Core"
+        x:Class="Printendar.App.MainWindow"
+        x:DataType="vm:MainViewModel"
+        Title="Printendar"
+        Width="1280" Height="860"
+        MinWidth="900" MinHeight="600">
+
+  <Window.Styles>
+    <Style Selector="TextBlock.sectionHeading">
+      <Setter Property="FontWeight" Value="SemiBold" />
+      <Setter Property="Margin" Value="0,14,0,4" />
+      <Setter Property="Opacity" Value="0.75" />
+      <Setter Property="FontSize" Value="12" />
+    </Style>
+    <Style Selector="ComboBox, NumericUpDown">
+      <Setter Property="HorizontalAlignment" Value="Stretch" />
+      <Setter Property="Margin" Value="0,0,0,4" />
+    </Style>
+    <!-- Explains the consequence of the option above it. Collapses when there is nothing
+         to say, so the panel does not carry empty gaps. -->
+    <Style Selector="TextBlock.hint">
+      <Setter Property="TextWrapping" Value="Wrap" />
+      <Setter Property="FontSize" Value="11" />
+      <Setter Property="Opacity" Value="0.65" />
+      <Setter Property="Margin" Value="0,0,0,4" />
+    </Style>
+    <Style Selector="TextBlock.hint:empty">
+      <Setter Property="IsVisible" Value="False" />
+    </Style>
+  </Window.Styles>
+
+  <DockPanel>
+
+    <!-- The everyday controls sit on the top bar. Everything a person needs to print this
+         month and no more: pick a month, print it. The rest is refinement in the panel. -->
+    <Border DockPanel.Dock="Top" Padding="12,10" Background="{DynamicResource SystemChromeLowColor}">
+      <Grid ColumnDefinitions="Auto,Auto,Auto,*,Auto,Auto">
+        <Button Grid.Column="0" Name="PreviousMonth" Content="&#x2039;" Width="36" ToolTip.Tip="Previous month" />
+        <Button Grid.Column="1" Name="NextMonth" Content="&#x203A;" Width="36" Margin="4,0,0,0" ToolTip.Tip="Next month" />
+        <TextBlock Grid.Column="2"
+                   Text="{Binding MonthTitle}"
+                   FontSize="20" FontWeight="SemiBold"
+                   VerticalAlignment="Center" Margin="16,0,0,0" />
+        <Button Grid.Column="4" Name="SavePdf" Content="Save as PDF" Margin="0,0,8,0" />
+        <Button Grid.Column="5" Name="Print" Content="Print" Classes="accent" />
+      </Grid>
+    </Border>
+
+    <!-- What the layout had to do to make it fit, in words, with the lever to pull. -->
+    <Border DockPanel.Dock="Bottom" Padding="12,8" Background="{DynamicResource SystemChromeLowColor}">
+      <TextBlock Text="{Binding Status}" TextWrapping="Wrap" Opacity="0.85" />
+    </Border>
+
+    <ScrollViewer DockPanel.Dock="Right" Width="280" Padding="12,0,12,12">
+      <StackPanel>
+        <TextBlock Classes="sectionHeading" Text="PAPER" />
+        <ComboBox ItemsSource="{Binding PaperSizeChoices}" SelectedItem="{Binding Paper}">
+          <ComboBox.ItemTemplate>
+            <DataTemplate x:DataType="paper:PaperSize">
+              <TextBlock Text="{Binding DisplayName}" />
+            </DataTemplate>
+          </ComboBox.ItemTemplate>
+        </ComboBox>
+        <ComboBox ItemsSource="{Binding OrientationChoices}" SelectedItem="{Binding SelectedOrientation}" />
+
+        <TextBlock Classes="sectionHeading" Text="MARGIN (INCHES)" />
+        <NumericUpDown Value="{Binding MarginInches}" Minimum="0.1" Maximum="2" Increment="0.05"
+                       FormatString="0.00" />
+
+        <TextBlock Classes="sectionHeading" Text="WEEK" />
+        <ComboBox ItemsSource="{Binding WeekStartChoices}" SelectedItem="{Binding SelectedWeekStart}" />
+        <ComboBox ItemsSource="{Binding WeekendModeChoices}" SelectedItem="{Binding SelectedWeekendMode}" />
+        <TextBlock Text="{Binding WeekendModeDescription}" Classes="hint" />
+        <TextBlock Text="Squeezing the weekend needs weeks to start on Monday."
+                   IsVisible="{Binding !CanCompressWeekend}"
+                   Classes="hint" />
+
+        <TextBlock Classes="sectionHeading" Text="WHEN A DAY IS TOO FULL TO FIT" />
+        <ComboBox ItemsSource="{Binding FitPolicyChoices}" SelectedItem="{Binding SelectedFitPolicy}" />
+        <TextBlock Text="{Binding FitPolicyDescription}" Classes="hint" />
+
+        <TextBlock Classes="sectionHeading" Text="DETAIL" />
+        <CheckBox Content="Show start times" IsChecked="{Binding ShowStartTimes}" />
+
+        <TextBlock Classes="sectionHeading" Text="DAYS FROM THE MONTHS EITHER SIDE" />
+        <ComboBox ItemsSource="{Binding AdjacentDayChoices}" SelectedItem="{Binding SelectedAdjacentDays}" />
+      </StackPanel>
+    </ScrollViewer>
+
+    <Border Background="{DynamicResource SystemAltMediumLowColor}" Padding="20">
+      <!-- Stretch, not Center. The preview fills the slot it is given and fits the sheet
+           inside it; a size-negotiating preview pushed the options panel off the window. -->
+      <controls:ScenePreview Name="Preview"
+                             Scene="{Binding Scene}"
+                             HorizontalAlignment="Stretch"
+                             VerticalAlignment="Stretch" />
+    </Border>
+
+  </DockPanel>
+</Window>

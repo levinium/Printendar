@@ -2,6 +2,7 @@
   <Folder Name="/src/">
     <Project Path="src/Printendar.Core/Printendar.Core.csproj" />
     <Project Path="src/Printendar.Cli/Printendar.Cli.csproj" />
+    <Project Path="src/Printendar.App/Printendar.App.csproj" />
   </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/Printendar.Core.Tests/Printendar.Core.Tests.csproj" />

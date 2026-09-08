@@ -1,0 +1,31 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net10.0</TargetFramework>
+    <RootNamespace>Printendar.App</RootNamespace>
+    <AssemblyName>Printendar</AssemblyName>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+    <IsPackable>false</IsPackable>
+
+    <!-- Avalonia compiles XAML at build time and reports binding errors as build errors. -->
+    <AvaloniaUseCompiledBindingsByDefault>true</AvaloniaUseCompiledBindingsByDefault>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Avalonia" />
+    <PackageReference Include="Avalonia.Desktop" />
+    <PackageReference Include="Avalonia.Themes.Fluent" />
+    <!--
+      Referenced explicitly, not just transitively. The preview control leases the SKCanvas
+      from Avalonia's Skia renderer so that Printendar's own SceneRenderer draws onto it, and
+      ISkiaSharpApiLeaseFeature lives in this assembly.
+    -->
+    <PackageReference Include="Avalonia.Skia" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Printendar.Core\Printendar.Core.csproj" />
+  </ItemGroup>
+
+</Project>
