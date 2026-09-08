@@ -1,6 +1,7 @@
 using System.Globalization;
 using System.Net.Http.Headers;
 using System.Text.Json;
+using Microsoft.Identity.Client;
 using Printendar.Core.Model;
 using Printendar.Core.Sources;
 
@@ -34,12 +35,15 @@ public sealed class GraphCalendarSource : ICalendarSource
     /// </remarks>
     private const int MaxPages = 50;
 
+    private readonly Microsoft365Options _options;
+
     private readonly Microsoft365Authenticator _authenticator;
     private readonly HttpClient _http;
     private readonly bool _ownsHttp;
 
     public GraphCalendarSource(Microsoft365Options options, HttpClient? http = null)
     {
+        _options = options;
         _authenticator = new Microsoft365Authenticator(options);
         _http = http ?? new HttpClient();
         _ownsHttp = http is null;
@@ -54,14 +58,23 @@ public sealed class GraphCalendarSource : ICalendarSource
 
     public async Task<AccountInfo> ConnectAsync(CancellationToken cancellationToken)
     {
-        var result = await _authenticator.AcquireTokenAsync(allowInteraction: true, cancellationToken)
-            .ConfigureAwait(false);
+        try
+        {
+            var result = await _authenticator.AcquireTokenAsync(allowInteraction: true, cancellationToken)
+                .ConfigureAwait(false);
 
-        var account = result.Account;
+            var account = result.Account;
 
-        return new AccountInfo(
-            account.Username ?? "Signed in",
-            account.Username);
+            return new AccountInfo(
+                account.Username ?? "Signed in",
+                account.Username);
+        }
+        catch (Exception ex) when (ex is MsalException or OperationCanceledException)
+        {
+            // Translated at the boundary, so nothing above here has to know what an AADSTS
+            // code is, and the user is told what to do rather than what went wrong.
+            throw new Microsoft365SignInException(Microsoft365Diagnostics.Interpret(ex, _options), ex);
+        }
     }
 
     public Task SignOutAsync(CancellationToken cancellationToken) =>

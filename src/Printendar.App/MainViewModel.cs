@@ -11,6 +11,7 @@ using Printendar.Core.Samples;
 using Printendar.Core.Scene;
 using Printendar.Core.Sources;
 using Printendar.Core.Text;
+using Printendar.Sources.Microsoft365;
 
 namespace Printendar.App;
 
@@ -270,6 +271,16 @@ public sealed class MainViewModel : INotifyPropertyChanged
 
             await RefreshEventsAsync(cancellationToken).ConfigureAwait(true);
         }
+        catch (Microsoft365SignInException ex)
+        {
+            // Already translated into advice at the source boundary.
+            AdminConsentUrl = ex.Diagnosis.AdminConsentUrl;
+
+            if (ex.Diagnosis.Problem is not SignInProblem.Cancelled)
+            {
+                Status = ex.Diagnosis.Message;
+            }
+        }
         catch (OperationCanceledException)
         {
             // The user closed the browser window. Not an error worth reporting.
@@ -283,6 +294,33 @@ public sealed class MainViewModel : INotifyPropertyChanged
             IsBusy = false;
         }
     }
+
+    private string? _adminConsentUrl;
+
+    /// <summary>
+    /// Where an administrator approves Printendar for the whole organisation, when that is
+    /// what is standing in the way.
+    /// </summary>
+    /// <remarks>
+    /// Only set when the identity platform actually said an administrator is needed. Offering
+    /// the link speculatively would send people to a page most of them do not need and cannot
+    /// use.
+    /// </remarks>
+    public string? AdminConsentUrl
+    {
+        get => _adminConsentUrl;
+        private set
+        {
+            _adminConsentUrl = value;
+            Raise(nameof(AdminConsentUrl));
+            Raise(nameof(NeedsAdminConsent));
+        }
+    }
+
+    public bool NeedsAdminConsent => _adminConsentUrl is not null;
+
+    /// <summary>Clears the administrator prompt, after they have been sent to approve it.</summary>
+    public void ClearAdminConsentPrompt() => AdminConsentUrl = null;
 
     public async Task DisconnectAsync(CancellationToken cancellationToken = default)
     {

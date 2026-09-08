@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using Avalonia.Controls;
 using Avalonia.Interactivity;
 using Avalonia.Platform.Storage;
@@ -33,6 +34,22 @@ public partial class MainWindow : Window
         this.FindControl<Button>("Print")!.Click += OnPrint;
         this.FindControl<Button>("ConnectMicrosoft")!.Click += OnConnectMicrosoft;
         this.FindControl<Button>("Disconnect")!.Click += async (_, _) => await _model.DisconnectAsync();
+        this.FindControl<Button>("AdminConsent")!.Click += OnAdminConsent;
+    }
+
+    private void OnAdminConsent(object? sender, RoutedEventArgs e)
+    {
+        if (_model.AdminConsentUrl is not { } url)
+        {
+            return;
+        }
+
+        Process.Start(new ProcessStartInfo(url) { UseShellExecute = true });
+
+        _model.ClearAdminConsentPrompt();
+        _model.ReportProblem(
+            "Approve Printendar on the page that just opened, then come back and click " +
+            "Connect Microsoft 365 again.");
     }
 
     private async void OnConnectMicrosoft(object? sender, RoutedEventArgs e)

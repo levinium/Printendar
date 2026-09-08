@@ -69,6 +69,25 @@
                   IsEnabled="{Binding IsNotBusy}" />
           <TextBlock Classes="hint"
                      Text="Showing a sample month until a calendar is connected. Printendar only ever reads your calendar." />
+
+          <!-- Only appears when Microsoft actually said an administrator is required.
+               Offering it speculatively would send most people to a page they cannot use. -->
+          <StackPanel IsVisible="{Binding NeedsAdminConsent}" Margin="0,8,0,0">
+            <Button Name="AdminConsent"
+                    Content="Approve for my organisation"
+                    HorizontalAlignment="Stretch" />
+            <TextBlock Classes="hint"
+                       Text="Opens Microsoft's approval page. You need to be an administrator. If you are not, send the address below to whoever is." />
+            <!-- Read only and selectable rather than a copy button: the person sending this
+                 to their IT administrator can see exactly what they are sending. -->
+            <TextBox Text="{Binding AdminConsentUrl, Mode=OneWay}"
+                     IsReadOnly="True"
+                     FontSize="10"
+                     TextWrapping="Wrap"
+                     AcceptsReturn="True"
+                     MaxHeight="80"
+                     Margin="0,4,0,0" />
+          </StackPanel>
         </StackPanel>
 
         <StackPanel IsVisible="{Binding IsConnected}">
