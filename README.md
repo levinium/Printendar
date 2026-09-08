@@ -21,6 +21,17 @@ Printendar is the missing tool. It reads your calendars, lays a month out agains
 
 Calendar sources: Microsoft 365 and Outlook, Google Calendar, and ICS (a file, or a subscription URL).
 
+## Opening a calendar file
+
+The route that needs nothing at all: no account, no sign-in, no approval from anyone.
+
+Export or download a calendar from wherever it lives, as a `.ics` file, then **Open a calendar
+file** in Printendar. Outlook, Google Calendar, Apple Calendar and most other calendar programs
+can produce one.
+
+Recurring events, all-day events and exceptions are all handled. The file is re-read each time,
+so re-exporting and printing again picks up the changes.
+
 ## Connecting Microsoft 365
 
 Sign in once and Printendar remembers you. It asks only for read access to your calendars,
@@ -52,12 +63,12 @@ and the identity platform treats its client id as public by design.
 
 Early development, and honest about it.
 
-Working: the layout engine, the desktop window with a live preview, PDF export, and reading
-calendars from Microsoft 365.
+Working: the layout engine, the desktop window with a live preview, PDF export, reading
+calendars from Microsoft 365, and opening `.ics` files.
 
 Not done yet:
 
-- Google Calendar and ICS are not built.
+- Google Calendar is not built, and neither are `.ics` subscription URLs (only files).
 - Printing hands the PDF to your system's own viewer and print dialog rather than driving the
   printer directly.
 - Only the month view exists. A blank grid, a week, an agenda and a tri-fold are planned.

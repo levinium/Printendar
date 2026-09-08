@@ -15,6 +15,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\Printendar.Core\Printendar.Core.csproj" />
+    <ProjectReference Include="..\Printendar.Sources.Ics\Printendar.Sources.Ics.csproj" />
   </ItemGroup>
 
 </Project>

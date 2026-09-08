@@ -76,6 +76,7 @@ namespace Printendar.Cli
                   --out <path>          Output file. Defaults to <month>.pdf.
                   --png <path>          Also write a PNG of the same page, at 96 DPI.
                   --demo                Fill the month with invented events across five calendars.
+                  --ics <path>          Read events from an iCalendar (.ics) file.
 
                 Example:
                   printendar render --month 2026-03 --paper letter --landscape --out march.pdf
@@ -105,5 +106,6 @@ namespace Printendar.Cli
         CultureInfo Culture,
         string OutputPath,
         string? PngPath,
-        bool Demo);
+        bool Demo,
+        string? IcsPath);
 }

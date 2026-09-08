@@ -35,6 +35,34 @@ public partial class MainWindow : Window
         this.FindControl<Button>("ConnectMicrosoft")!.Click += OnConnectMicrosoft;
         this.FindControl<Button>("Disconnect")!.Click += async (_, _) => await _model.DisconnectAsync();
         this.FindControl<Button>("AdminConsent")!.Click += OnAdminConsent;
+        this.FindControl<Button>("OpenIcsFile")!.Click += OnOpenIcsFile;
+    }
+
+    private async void OnOpenIcsFile(object? sender, RoutedEventArgs e)
+    {
+        var files = await StorageProvider.OpenFilePickerAsync(new FilePickerOpenOptions
+        {
+            Title = "Open a calendar file",
+            AllowMultiple = true,
+            FileTypeFilter =
+            [
+                new FilePickerFileType("Calendar files") { Patterns = ["*.ics"] },
+                FilePickerFileTypes.All,
+            ],
+        });
+
+        var paths = files
+            .Select(f => f.TryGetLocalPath())
+            .Where(p => p is not null)
+            .Select(p => p!)
+            .ToList();
+
+        if (paths.Count == 0)
+        {
+            return;
+        }
+
+        await _model.OpenCalendarFilesAsync(paths);
     }
 
     private void OnAdminConsent(object? sender, RoutedEventArgs e)

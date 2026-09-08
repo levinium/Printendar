@@ -3,8 +3,11 @@ using Printendar.Core.Layout;
 using Printendar.Core.Layout.Month;
 using Printendar.Core.Paper;
 using Printendar.Core.Render;
+using Printendar.Core.Model;
 using Printendar.Core.Samples;
 using Printendar.Core.Text;
+using Printendar.Sources.Ics;
+using SkiaSharp;
 
 namespace Printendar.Cli;
 
@@ -36,7 +39,29 @@ internal static class RenderCommand
 
         var layout = new LayoutRequest(page, grid, request.Culture, measurer);
 
-        if (request.Demo)
+        if (request.IcsPath is { } icsPath)
+        {
+            // The grid draws days either side of the month, so those are read too, or the
+            // last row would come out empty.
+            var first = new DateOnly(request.Month.Year, request.Month.Month, 1);
+            var last = first.AddMonths(1).AddDays(-1);
+            var lead = ((int)first.DayOfWeek - (int)request.WeekStart + 7) % 7;
+            var trail = 6 - (((int)last.DayOfWeek - (int)request.WeekStart + 7) % 7);
+            var window = new DateSpan(first.AddDays(-lead), last.AddDays(trail));
+
+            var events = IcsCalendarReader.Read(
+                File.ReadAllText(icsPath),
+                "ics",
+                window,
+                TimeZoneInfo.Local);
+
+            layout = layout with
+            {
+                Events = events,
+                Calendars = [new CalendarLegendEntry("ics", Path.GetFileNameWithoutExtension(icsPath), new SKColor(0x1F, 0x77, 0xB4))],
+            };
+        }
+        else if (request.Demo)
         {
             layout = layout with
             {

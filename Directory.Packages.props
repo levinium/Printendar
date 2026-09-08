@@ -43,6 +43,7 @@
       SDK is a large dependency to carry for that, in a desktop app people download.
       Hand-rolling OAuth would be the wrong trade in the other direction, so that stays MSAL.
     -->
+    <PackageVersion Include="Ical.Net" Version="5.2.3" />
     <PackageVersion Include="Microsoft.Identity.Client" Version="4.88.0" />
     <PackageVersion Include="Microsoft.Identity.Client.Extensions.Msal" Version="4.88.0" />
     <PackageVersion Include="Microsoft.Identity.Client.Broker" Version="4.88.0" />

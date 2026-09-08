@@ -1,0 +1,22 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <RootNamespace>Printendar.Sources.Ics</RootNamespace>
+    <Description>Reads calendars from iCalendar (.ics) files and subscription feeds.</Description>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!--
+      Recurrence expansion is the reason for this dependency. Microsoft 365 and Google expand
+      a series server side; an .ics file states the rule and leaves the expanding to the
+      reader, and RFC 5545 recurrence is not something worth reimplementing.
+    -->
+    <PackageReference Include="Ical.Net" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Printendar.Core\Printendar.Core.csproj" />
+  </ItemGroup>
+
+</Project>

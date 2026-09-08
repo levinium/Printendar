@@ -67,6 +67,13 @@
                   Content="Connect Microsoft 365"
                   HorizontalAlignment="Stretch"
                   IsEnabled="{Binding IsNotBusy}" />
+          <!-- Needs no account and no approval from anybody, so it is offered alongside
+               rather than buried: for a lot of people it is the only route that works. -->
+          <Button Name="OpenIcsFile"
+                  Content="Open a calendar file (.ics)"
+                  HorizontalAlignment="Stretch"
+                  Margin="0,4,0,0"
+                  IsEnabled="{Binding IsNotBusy}" />
           <TextBlock Classes="hint"
                      Text="Showing a sample month until a calendar is connected. Printendar only ever reads your calendar." />
 

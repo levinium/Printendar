@@ -11,6 +11,7 @@ using Printendar.Core.Samples;
 using Printendar.Core.Scene;
 using Printendar.Core.Sources;
 using Printendar.Core.Text;
+using Printendar.Sources.Ics;
 using Printendar.Sources.Microsoft365;
 
 namespace Printendar.App;
@@ -321,6 +322,58 @@ public sealed class MainViewModel : INotifyPropertyChanged
 
     /// <summary>Clears the administrator prompt, after they have been sent to approve it.</summary>
     public void ClearAdminConsentPrompt() => AdminConsentUrl = null;
+
+    /// <summary>
+    /// Opens one or more .ics files as the calendars to print.
+    /// </summary>
+    /// <remarks>
+    /// Kept separate from <see cref="ConnectAsync"/> because there is nothing to connect to:
+    /// no account, no approval, no network. That is the whole appeal of this route, and
+    /// routing it through a sign-in flow would imply otherwise.
+    /// </remarks>
+    public async Task OpenCalendarFilesAsync(
+        IReadOnlyList<string> paths,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(paths);
+
+        IsBusy = true;
+
+        try
+        {
+            var source = new IcsFileCalendarSource();
+            var added = new List<CalendarRef>();
+
+            foreach (var path in paths)
+            {
+                added.Add(source.AddFile(path));
+            }
+
+            _source = source;
+            AccountLabel = added.Count == 1
+                ? added[0].DisplayName
+                : $"{added.Count} calendar files";
+
+            Calendars.Clear();
+
+            for (var i = 0; i < added.Count; i++)
+            {
+                var selectable = new SelectableCalendar(added[i], CalendarPalette.At(i)) { IsSelected = true };
+                selectable.SelectionChanged += (_, _) => _ = RefreshEventsAsync();
+                Calendars.Add(selectable);
+            }
+
+            await RefreshEventsAsync(cancellationToken).ConfigureAwait(true);
+        }
+        catch (Exception ex)
+        {
+            Status = ex.Message;
+        }
+        finally
+        {
+            IsBusy = false;
+        }
+    }
 
     public async Task DisconnectAsync(CancellationToken cancellationToken = default)
     {

@@ -20,6 +20,7 @@ internal static class RenderRequestParser
         string? outputPath = null;
         string? pngPath = null;
         var demo = false;
+        string? icsPath = null;
 
         for (var i = 0; i < args.Length; i++)
         {
@@ -55,6 +56,9 @@ internal static class RenderRequestParser
                 case "--out":
                     outputPath = Value(args, ref i, "--out");
                     break;
+                case "--ics":
+                    icsPath = Value(args, ref i, "--ics");
+                    break;
                 case "--demo":
                     demo = true;
                     break;
@@ -77,7 +81,8 @@ internal static class RenderRequestParser
             culture,
             outputPath ?? $"{month:yyyy-MM}.pdf",
             pngPath,
-            demo);
+            demo,
+            icsPath);
     }
 
     private static string Value(ReadOnlySpan<string> args, ref int index, string option)
