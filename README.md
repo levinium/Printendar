@@ -21,9 +21,38 @@ Printendar is the missing tool. It reads your calendars, lays a month out agains
 
 Calendar sources: Microsoft 365 and Outlook, Google Calendar, and ICS (a file, or a subscription URL).
 
+## Connecting Microsoft 365
+
+Sign in once and Printendar remembers you. It asks only for read access to your calendars,
+and the token is stored encrypted by your operating system: DPAPI on Windows, Keychain on
+macOS, libsecret on Linux. Nothing is sent anywhere except to Microsoft.
+
+Printendar's registration accepts work and school accounts from any organisation as well as
+personal Microsoft accounts. It is not tied to any particular organisation.
+
+**If your organisation has switched off user consent for third party applications**, an
+administrator there consents once, at:
+
+```
+https://login.microsoftonline.com/common/adminconsent?client_id=<the client id>
+```
+
+**If your organisation would rather not consent to this application at all**, register your
+own and point Printendar at it:
+
+```
+scripts/New-PrintendarAppRegistration.ps1     # creates the registration
+$env:PRINTENDAR_MS_CLIENT_ID = '<your client id>'
+```
+
+The client id is not a secret. Printendar is a public client application: it holds no secret,
+and the identity platform treats its client id as public by design.
+
 ## Status
 
-Early development. See `docs/` for the design.
+Early development. The print engine, the desktop window and Microsoft 365 all work. Google
+Calendar and ICS are not built yet, and printing currently hands the PDF to your system's
+own viewer and print dialog rather than driving the printer directly.
 
 ## Building
 
