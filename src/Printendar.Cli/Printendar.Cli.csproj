@@ -1,0 +1,20 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <!--
+      A headless harness, not a shipping product. It exists so the print engine can be
+      exercised and eyeballed on real paper long before there is a window, an account or a
+      single line of authentication code.
+    -->
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0</TargetFramework>
+    <RootNamespace>Printendar.Cli</RootNamespace>
+    <AssemblyName>printendar</AssemblyName>
+    <IsPackable>false</IsPackable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Printendar.Core\Printendar.Core.csproj" />
+  </ItemGroup>
+
+</Project>

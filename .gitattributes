@@ -1,0 +1,26 @@
+# Git for Windows sets core.autocrlf=true in its system config, so without this the next
+# checkout rewrites the tree to CRLF and anything executed on the Linux or macOS runners
+# fails on an invisible character. eol=lf, not bare text=auto.
+# Verify with `git ls-files --eol` and expect i/lf w/lf. Counting \r\n in PowerShell gives
+# a false reading, because PowerShell normalizes line endings on its own.
+* text=auto eol=lf
+
+*.cs        text diff=csharp
+*.csproj    text
+*.props     text
+*.slnx      text
+*.md        text
+*.yml       text
+*.json      text
+*.ics       text
+
+# Snapshot baselines are compared byte for byte. Pin them to LF so a Windows checkout does
+# not silently rewrite every verified file and fail the whole suite.
+*.verified.txt text eol=lf
+
+# Binary. Never touch these.
+*.png       binary
+*.pdf       binary
+*.ttf       binary
+*.otf       binary
+*.ico       binary

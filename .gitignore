@@ -1,0 +1,21 @@
+bin/
+obj/
+[Dd]ebug/
+[Rr]elease/
+publish/
+artifacts/
+*.user
+*.suo
+.vs/
+.idea/
+.vscode/
+TestResults/
+
+# Verify writes these next to the baseline when a snapshot does not match. They are
+# working files, never committed.
+*.received.txt
+*.received.png
+
+# Scratch output from the CLI harness.
+out/
+*.local.pdf

@@ -1,0 +1,28 @@
+<Project>
+
+  <PropertyGroup>
+    <ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!--
+      SkiaSharp is pinned centrally on purpose. Layout is computed from glyph advances, so
+      a version drift here can move every measurement in the product at once. The three
+      NativeAssets packages are named explicitly so a self-contained publish works for any
+      RID rather than only the host's.
+    -->
+    <PackageVersion Include="SkiaSharp" Version="4.151.2" />
+    <PackageVersion Include="SkiaSharp.NativeAssets.Win32" Version="4.151.2" />
+    <PackageVersion Include="SkiaSharp.NativeAssets.macOS" Version="4.151.2" />
+    <PackageVersion Include="SkiaSharp.NativeAssets.Linux" Version="4.151.2" />
+    <PackageVersion Include="SkiaSharp.NativeAssets.Linux.NoDependencies" Version="4.151.2" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageVersion Include="coverlet.collector" Version="6.0.4" />
+    <PackageVersion Include="Microsoft.NET.Test.Sdk" Version="17.14.1" />
+    <PackageVersion Include="xunit" Version="2.9.3" />
+    <PackageVersion Include="xunit.runner.visualstudio" Version="3.1.4" />
+  </ItemGroup>
+
+</Project>

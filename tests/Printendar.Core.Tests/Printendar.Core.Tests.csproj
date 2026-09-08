@@ -1,0 +1,34 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <!--
+      Plain net10.0, deliberately. These tests exercise Core, which carries no platform
+      dependency, so they must run on macOS and Linux too. A portability claim asserted
+      only from a Windows machine is not evidence, and CI runs this project on all three.
+
+      Anything needing Avalonia, a window or the app's view models belongs in
+      Printendar.App.Tests.
+    -->
+    <TargetFramework>net10.0</TargetFramework>
+    <IsPackable>false</IsPackable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="coverlet.collector" />
+    <PackageReference Include="Microsoft.NET.Test.Sdk" />
+    <PackageReference Include="xunit" />
+    <PackageReference Include="xunit.runner.visualstudio" />
+    <!-- Headless CI containers have no libfontconfig or libGL. This variant lets Skia
+         start there, which the golden-enforcing Linux leg depends on. -->
+    <PackageReference Include="SkiaSharp.NativeAssets.Linux.NoDependencies" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\Printendar.Core\Printendar.Core.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Using Include="Xunit" />
+  </ItemGroup>
+
+</Project>

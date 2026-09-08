@@ -1,0 +1,52 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-latest, macos-latest, ubuntu-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Restore
+        run: dotnet restore
+
+      - name: Build
+        run: dotnet build --no-restore -c Release
+
+      - name: Test
+        run: dotnet test --no-build -c Release --verbosity normal
+
+  core-has-no-ui-dependency:
+    # A second, independent check on the claim that Core is portable. The unit test parses
+    # the project file; this one asks the restore graph, including transitives, which is
+    # where a UI dependency would actually sneak in.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Fail if Core resolves any UI or platform package
+        shell: bash
+        run: |
+          dotnet list src/Printendar.Core/Printendar.Core.csproj package --include-transitive > graph.txt
+          cat graph.txt
+          if grep -Eiq 'Avalonia|System\.Windows|System\.Drawing|Microsoft\.WindowsDesktop' graph.txt; then
+            echo "::error::Printendar.Core resolved a UI or platform package. Core must stay portable."
+            exit 1
+          fi

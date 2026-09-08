@@ -1,0 +1,50 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <!--
+      Plain net10.0. No Windows suffix, no UI framework. Core holds the calendar model, the
+      layout engine, the scene graph and the renderer, and all of it must run unchanged on
+      Windows, macOS and Linux so CI can prove the layout is identical everywhere.
+
+      ArchitectureTests parses this file and asserts the package reference set is exactly
+      SkiaSharp with no project references. Do not add Avalonia, System.Drawing or a
+      platform SDK here for the sake of a Point or a Color; Core carries its own.
+    -->
+    <TargetFramework>net10.0</TargetFramework>
+    <RootNamespace>Printendar.Core</RootNamespace>
+    <Description>Calendar model, page layout, scene graph, Skia rendering and PDF export.</Description>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="SkiaSharp" />
+    <!--
+      Native binaries are per-platform and the main package brings in only the host's.
+      Naming all three keeps a self-contained publish working for any RID.
+    -->
+    <PackageReference Include="SkiaSharp.NativeAssets.Win32" />
+    <PackageReference Include="SkiaSharp.NativeAssets.macOS" />
+    <PackageReference Include="SkiaSharp.NativeAssets.Linux" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!--
+      The layout font ships inside the assembly rather than being taken from the system.
+      This is load-bearing, not a preference: glyph advances decide where every event title
+      wraps, so a system font would make the same month lay out differently on Windows,
+      macOS and Linux, and would make snapshot baselines flap per machine. Unhinted, because
+      the renderer sets SKFontHinting.None so that a 96 DPI preview and a 300 DPI print place
+      glyphs identically.
+
+      Noto Sans is under the SIL Open Font License. See THIRD-PARTY-NOTICES.md.
+    -->
+    <EmbeddedResource Include="..\..\assets\fonts\NotoSans-Regular.ttf"
+                      LogicalName="Printendar.Core.Fonts.NotoSans-Regular.ttf" />
+    <EmbeddedResource Include="..\..\assets\fonts\NotoSans-SemiBold.ttf"
+                      LogicalName="Printendar.Core.Fonts.NotoSans-SemiBold.ttf" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="Printendar.Core.Tests" />
+  </ItemGroup>
+
+</Project>
