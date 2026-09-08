@@ -14,13 +14,16 @@ one page instead of spilling onto two.
 
 ## Download
 
-**[Download Printendar-v0.1.0-win-x64.zip](https://github.com/levinium/Printendar/releases/latest)**
+**[Download Printendar-v0.1.0-win-x64.zip](https://github.com/levinium/Printendar/releases/download/v0.1.0/Printendar-v0.1.0-win-x64.zip)** (47 MB)
 
 Unzip it anywhere and run `Printendar.exe`. That is the whole installation. No setup step, no
 admin prompt, no registry entry: the .NET runtime it needs is inside the folder. Delete the
 folder and it is gone. You need 64-bit Windows and nothing else.
 
-This is an early release. Read [what works and what does not](#status) before you download.
+Windows SmartScreen will warn that the app is unsigned. Choose **More info** then **Run
+anyway**, or read the source and build it yourself with `./publish.ps1`.
+
+This is an early release. Read [what works and what does not](#status) first.
 
 ## Why this exists
 
