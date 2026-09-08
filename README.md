@@ -50,9 +50,33 @@ and the identity platform treats its client id as public by design.
 
 ## Status
 
-Early development. The print engine, the desktop window and Microsoft 365 all work. Google
-Calendar and ICS are not built yet, and printing currently hands the PDF to your system's
-own viewer and print dialog rather than driving the printer directly.
+Early development, and honest about it.
+
+Working: the layout engine, the desktop window with a live preview, PDF export, and reading
+calendars from Microsoft 365.
+
+Not done yet:
+
+- Google Calendar and ICS are not built.
+- Printing hands the PDF to your system's own viewer and print dialog rather than driving the
+  printer directly.
+- Only the month view exists. A blank grid, a week, an agenda and a tri-fold are planned.
+- A multi-day event repeats as a chip on each day it covers, rather than drawing as one
+  spanning bar.
+- Builds are tested on Windows. The code carries no platform dependency and is written to run
+  on macOS and Linux, but that has not been verified on real machines yet.
+
+## How it fits a month onto one page
+
+Worth knowing, because it explains what the app does when a month is too busy.
+
+The page is measured before it is drawn. The layout works out how much room each day cell has,
+measures every event title against the font it will actually be printed in, and searches for
+the largest text size at which the whole month still fits. It stops shrinking at the point the
+text stops being readable on paper, and anything still left over becomes a "+3 more" note.
+
+So the guarantee is one page, always, and the trade-off it made is reported to you in words
+rather than left for you to discover at the printer.
 
 ## Building
 
