@@ -57,6 +57,38 @@
 
     <ScrollViewer DockPanel.Dock="Right" Width="280" Padding="12,0,12,12">
       <StackPanel>
+
+        <TextBlock Classes="sectionHeading" Text="CALENDARS" />
+
+        <!-- Before anyone signs in, the window shows a sample month rather than an empty
+             grid, so it is obvious what the program does. -->
+        <StackPanel IsVisible="{Binding IsNotConnected}">
+          <Button Name="ConnectMicrosoft"
+                  Content="Connect Microsoft 365"
+                  HorizontalAlignment="Stretch"
+                  IsEnabled="{Binding IsNotBusy}" />
+          <TextBlock Classes="hint"
+                     Text="Showing a sample month until a calendar is connected. Printendar only ever reads your calendar." />
+        </StackPanel>
+
+        <StackPanel IsVisible="{Binding IsConnected}">
+          <TextBlock Text="{Binding AccountLabel}" FontSize="11" Opacity="0.75" TextTrimming="CharacterEllipsis" />
+          <ItemsControl ItemsSource="{Binding Calendars}" Margin="0,6,0,0">
+            <ItemsControl.ItemTemplate>
+              <DataTemplate x:DataType="vm:SelectableCalendar">
+                <CheckBox IsChecked="{Binding IsSelected}" Margin="0,0,0,2">
+                  <StackPanel Orientation="Horizontal" Spacing="6">
+                    <Border Width="10" Height="10" CornerRadius="2"
+                            Background="{Binding Swatch}" VerticalAlignment="Center" />
+                    <TextBlock Text="{Binding DisplayName}" TextTrimming="CharacterEllipsis" />
+                  </StackPanel>
+                </CheckBox>
+              </DataTemplate>
+            </ItemsControl.ItemTemplate>
+          </ItemsControl>
+          <Button Name="Disconnect" Content="Sign out" HorizontalAlignment="Stretch" Margin="0,8,0,0" />
+        </StackPanel>
+
         <TextBlock Classes="sectionHeading" Text="PAPER" />
         <ComboBox ItemsSource="{Binding PaperSizeChoices}" SelectedItem="{Binding Paper}">
           <ComboBox.ItemTemplate>

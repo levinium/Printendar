@@ -37,6 +37,18 @@
   </ItemGroup>
 
   <ItemGroup>
+    <!--
+      MSAL only. Graph itself is called over plain HTTP with System.Text.Json, because
+      Printendar needs exactly two endpoints (/me/calendars and calendarView) and the Graph
+      SDK is a large dependency to carry for that, in a desktop app people download.
+      Hand-rolling OAuth would be the wrong trade in the other direction, so that stays MSAL.
+    -->
+    <PackageVersion Include="Microsoft.Identity.Client" Version="4.88.0" />
+    <PackageVersion Include="Microsoft.Identity.Client.Extensions.Msal" Version="4.88.0" />
+    <PackageVersion Include="Microsoft.Identity.Client.Broker" Version="4.88.0" />
+  </ItemGroup>
+
+  <ItemGroup>
     <PackageVersion Include="coverlet.collector" Version="6.0.4" />
     <PackageVersion Include="Microsoft.NET.Test.Sdk" Version="17.14.1" />
     <PackageVersion Include="xunit" Version="2.9.3" />

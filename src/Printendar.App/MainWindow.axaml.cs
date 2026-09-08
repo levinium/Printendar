@@ -4,6 +4,7 @@ using Avalonia.Platform.Storage;
 using Printendar.App.Controls;
 using Printendar.App.Printing;
 using Printendar.Core.Export;
+using Printendar.Sources.Microsoft365;
 
 namespace Printendar.App;
 
@@ -30,6 +31,26 @@ public partial class MainWindow : Window
         this.FindControl<Button>("NextMonth")!.Click += (_, _) => model.StepMonth(1);
         this.FindControl<Button>("SavePdf")!.Click += OnSavePdf;
         this.FindControl<Button>("Print")!.Click += OnPrint;
+        this.FindControl<Button>("ConnectMicrosoft")!.Click += OnConnectMicrosoft;
+        this.FindControl<Button>("Disconnect")!.Click += async (_, _) => await _model.DisconnectAsync();
+    }
+
+    private async void OnConnectMicrosoft(object? sender, RoutedEventArgs e)
+    {
+        var options = Microsoft365Options.FromEnvironment();
+
+        if (!options.IsConfigured)
+        {
+            // Says what to do rather than surfacing whatever the identity platform would have
+            // said about an all-zero application id.
+            _model.ReportProblem(
+                "This build has no Microsoft application id, so it cannot sign in. Set the " +
+                $"{Microsoft365Options.ClientIdEnvironmentVariable} environment variable to the client id " +
+                "of an Entra application registration, then start Printendar again.");
+            return;
+        }
+
+        await _model.ConnectAsync(new GraphCalendarSource(options));
     }
 
     private async void OnSavePdf(object? sender, RoutedEventArgs e)

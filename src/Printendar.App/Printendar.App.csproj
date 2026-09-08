@@ -26,6 +26,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\Printendar.Core\Printendar.Core.csproj" />
+    <ProjectReference Include="..\Printendar.Sources.Microsoft365\Printendar.Sources.Microsoft365.csproj" />
   </ItemGroup>
 
 </Project>

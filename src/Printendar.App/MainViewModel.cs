@@ -7,7 +7,9 @@ using Printendar.Core.Layout.Fit;
 using Printendar.Core.Layout.Month;
 using Printendar.Core.Model;
 using Printendar.Core.Paper;
+using Printendar.Core.Samples;
 using Printendar.Core.Scene;
+using Printendar.Core.Sources;
 using Printendar.Core.Text;
 
 namespace Printendar.App;
@@ -183,9 +185,189 @@ public sealed class MainViewModel : INotifyPropertyChanged
         }
     }
 
+    /// <summary>Shows a problem in the status bar, in words the user can act on.</summary>
+    public void ReportProblem(string message) => Status = message;
+
     public void ShowMonth(DateOnly month) => Month = month;
 
-    public void StepMonth(int months) => Month = _month.AddMonths(months);
+    public void StepMonth(int months)
+    {
+        Month = _month.AddMonths(months);
+
+        // Events are fetched per visible month, so moving needs a refetch. Fire and forget
+        // because the preview already shows the new grid; the events fill in when they arrive.
+        _ = RefreshEventsAsync();
+    }
+
+    // ------------------------------------------------------------------ calendar source
+
+    private ICalendarSource? _source;
+    private bool _isBusy;
+    private string? _accountLabel;
+
+    public ObservableCollection<SelectableCalendar> Calendars { get; } = [];
+
+    /// <summary>True while talking to the provider, so the window can disable its controls.</summary>
+    public bool IsBusy
+    {
+        get => _isBusy;
+        private set
+        {
+            _isBusy = value;
+            Raise(nameof(IsBusy));
+            Raise(nameof(IsNotBusy));
+        }
+    }
+
+    public bool IsNotBusy => !_isBusy;
+
+    /// <summary>Who is signed in, or null when nobody is.</summary>
+    public string? AccountLabel
+    {
+        get => _accountLabel;
+        private set
+        {
+            _accountLabel = value;
+            Raise(nameof(AccountLabel));
+            Raise(nameof(IsConnected));
+            Raise(nameof(IsNotConnected));
+        }
+    }
+
+    public bool IsConnected => _accountLabel is not null;
+
+    public bool IsNotConnected => _accountLabel is null;
+
+    /// <summary>
+    /// Signs in and loads the account's calendars.
+    /// </summary>
+    /// <remarks>
+    /// The sample month stays on screen until real events arrive, so the window never falls
+    /// back to an empty grid that looks like something went wrong.
+    /// </remarks>
+    public async Task ConnectAsync(ICalendarSource source, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(source);
+
+        IsBusy = true;
+
+        try
+        {
+            var account = await source.ConnectAsync(cancellationToken).ConfigureAwait(true);
+            var calendars = await source.ListCalendarsAsync(cancellationToken).ConfigureAwait(true);
+
+            _source = source;
+            AccountLabel = account.Email ?? account.DisplayName;
+
+            Calendars.Clear();
+
+            for (var i = 0; i < calendars.Count; i++)
+            {
+                var selectable = new SelectableCalendar(calendars[i], CalendarPalette.At(i));
+                selectable.SelectionChanged += (_, _) => _ = RefreshEventsAsync();
+                Calendars.Add(selectable);
+            }
+
+            await RefreshEventsAsync(cancellationToken).ConfigureAwait(true);
+        }
+        catch (OperationCanceledException)
+        {
+            // The user closed the browser window. Not an error worth reporting.
+        }
+        catch (Exception ex)
+        {
+            Status = $"Could not connect: {ex.Message}";
+        }
+        finally
+        {
+            IsBusy = false;
+        }
+    }
+
+    public async Task DisconnectAsync(CancellationToken cancellationToken = default)
+    {
+        if (_source is null)
+        {
+            return;
+        }
+
+        await _source.SignOutAsync(cancellationToken).ConfigureAwait(true);
+        await _source.DisposeAsync().ConfigureAwait(true);
+
+        _source = null;
+        AccountLabel = null;
+        Calendars.Clear();
+
+        // Back to the sample month rather than an empty grid.
+        SetEvents(SampleCalendar.ForMonth(_month.Year, _month.Month), SampleCalendar.Calendars);
+    }
+
+    /// <summary>Fetches the visible month from the selected calendars.</summary>
+    public async Task RefreshEventsAsync(CancellationToken cancellationToken = default)
+    {
+        if (_source is null)
+        {
+            return;
+        }
+
+        var selected = Calendars.Where(c => c.IsSelected).ToList();
+
+        if (selected.Count == 0)
+        {
+            SetEvents([], []);
+            return;
+        }
+
+        IsBusy = true;
+
+        try
+        {
+            // The grid draws days either side of the month, so those are fetched too.
+            var window = VisibleWindow();
+
+            var events = await _source.GetEventsAsync(
+                [.. selected.Select(c => c.Reference)],
+                window,
+                TimeZoneInfo.Local,
+                cancellationToken).ConfigureAwait(true);
+
+            SetEvents(
+                events,
+                [.. selected.Select(c => new CalendarLegendEntry(
+                    c.Reference.CalendarId,
+                    c.DisplayName,
+                    c.Color))]);
+        }
+        catch (OperationCanceledException)
+        {
+        }
+        catch (Exception ex)
+        {
+            Status = $"Could not read the calendar: {ex.Message}";
+        }
+        finally
+        {
+            IsBusy = false;
+        }
+    }
+
+    /// <summary>
+    /// The days the grid will show, which is more than the month itself.
+    /// </summary>
+    /// <remarks>
+    /// A Sunday-start March 2026 runs to Saturday 4 April, and those cells are drawn, so their
+    /// events have to be fetched or the last row looks empty.
+    /// </remarks>
+    private DateSpan VisibleWindow()
+    {
+        var first = new DateOnly(_month.Year, _month.Month, 1);
+        var last = first.AddMonths(1).AddDays(-1);
+
+        var lead = ((int)first.DayOfWeek - (int)_weekStart + 7) % 7;
+        var trail = 6 - (((int)last.DayOfWeek - (int)_weekStart + 7) % 7);
+
+        return new DateSpan(first.AddDays(-lead), last.AddDays(trail));
+    }
 
     /// <summary>Replaces the events on show and relays out.</summary>
     public void SetEvents(
