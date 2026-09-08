@@ -1,4 +1,5 @@
 using System.Text.Json;
+using Printendar.Core.Sources;
 using System.Text.Json.Serialization;
 
 namespace Printendar.Core.Settings;
@@ -16,6 +17,12 @@ public sealed record AppSettings
     public string? MicrosoftClientId { get; init; }
 
     public string? MicrosoftTenant { get; init; }
+
+    /// <summary>A Google OAuth client id, for the same bring-your-own reason as Microsoft's.</summary>
+    public string? GoogleClientId { get; init; }
+
+    /// <summary>The calendars the user has added.</summary>
+    public IReadOnlyList<ConfiguredSource> Sources { get; init; } = [];
 }
 
 /// <summary>Where the settings file lives.</summary>
@@ -97,10 +104,18 @@ public sealed class SettingsStore(ISettingsLocation location)
     }
 
     /// <summary>Treats blank text as absent, so a cleared box reads back as "not configured".</summary>
+    /// <remarks>
+    /// Also drops sources that cannot be used. A settings file written by a newer version can
+    /// name a source kind this build has never heard of, which deserializes to the enum's
+    /// default; letting that through would make an unknown future calendar masquerade as a
+    /// Microsoft account. Dropping it means an older build still starts.
+    /// </remarks>
     private static AppSettings Normalize(AppSettings settings) => settings with
     {
         MicrosoftClientId = Trimmed(settings.MicrosoftClientId),
         MicrosoftTenant = Trimmed(settings.MicrosoftTenant),
+        GoogleClientId = Trimmed(settings.GoogleClientId),
+        Sources = [.. (settings.Sources ?? []).Where(s => s is { IsUsable: true })],
     };
 
     private static string? Trimmed(string? value) =>
