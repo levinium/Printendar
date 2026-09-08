@@ -2,6 +2,7 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:controls="clr-namespace:Printendar.App.Controls"
         xmlns:vm="clr-namespace:Printendar.App"
+        xmlns:printing="clr-namespace:Printendar.Core.Printing;assembly=Printendar.Core"
         x:Class="Printendar.App.PrintDialogWindow"
         x:DataType="vm:PrintDialogViewModel"
         Title="Print"
@@ -31,9 +32,17 @@
 
     <StackPanel DockPanel.Dock="Right" Width="260" Margin="16,0,0,0">
       <TextBlock Text="PRINTER" FontSize="12" FontWeight="SemiBold" Opacity="0.75" Margin="0,0,0,4" />
+      <!-- Without an item template the ComboBox renders each entry with ToString, and a
+           record's ToString is its type name and every field. -->
       <ComboBox ItemsSource="{Binding Printers}"
                 SelectedItem="{Binding SelectedPrinter}"
-                HorizontalAlignment="Stretch" />
+                HorizontalAlignment="Stretch">
+        <ComboBox.ItemTemplate>
+          <DataTemplate x:DataType="printing:PrinterInfo">
+            <TextBlock Text="{Binding DisplayName}" TextTrimming="CharacterEllipsis" />
+          </DataTemplate>
+        </ComboBox.ItemTemplate>
+      </ComboBox>
       <TextBlock Text="No printers are installed on this computer."
                  IsVisible="{Binding HasNoPrinters}"
                  TextWrapping="Wrap" FontSize="11" Opacity="0.65" Margin="0,4,0,0" />

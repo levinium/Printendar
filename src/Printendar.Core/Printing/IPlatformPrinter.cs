@@ -16,7 +16,18 @@ public readonly record struct PrintOutcome(bool Printed, string? Message)
 }
 
 /// <summary>A printer the user can choose.</summary>
-public readonly record struct PrinterInfo(string Name, bool IsDefault);
+public readonly record struct PrinterInfo(string Name, bool IsDefault)
+{
+    /// <summary>
+    /// What the user reads in the printer list.
+    /// </summary>
+    /// <remarks>
+    /// A real property rather than something the UI formats, because a record's generated
+    /// ToString prints its type and every field. A dropdown with no item template falls back
+    /// to that, and the list read "PrinterInfo { Name = ..., IsDefault = True }".
+    /// </remarks>
+    public string DisplayName => IsDefault ? $"{Name} (Default)" : Name;
+}
 
 /// <summary>
 /// Sends a laid-out page to a printer.
