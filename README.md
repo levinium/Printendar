@@ -14,7 +14,7 @@ one page instead of spilling onto two.
 
 ## Download
 
-**[Download Printendar-v0.1.0-win-x64.zip](https://github.com/levinium/Printendar/releases/download/v0.1.0/Printendar-v0.1.0-win-x64.zip)** (47 MB)
+**[Download Printendar-v0.2.0-win-x64.zip](https://github.com/levinium/Printendar/releases/download/v0.2.0/Printendar-v0.2.0-win-x64.zip)** (61 MB)
 
 Unzip it anywhere and run `Printendar.exe`. That is the whole installation. No setup step, no
 admin prompt, no registry entry: the .NET runtime it needs is inside the folder. Delete the
@@ -126,15 +126,16 @@ except to Microsoft.
 
 Early, and honest about it.
 
-**Works:** the layout engine, the desktop window with a live preview, PDF export, and reading
-`.ics` files.
+**Works:** the layout engine, the desktop window with a live preview, printing on Windows,
+PDF export, and reading `.ics` files. Printing has been confirmed on real hardware.
 
 **Not built yet:**
 
 - Microsoft 365 sign-in needs an application registration, as above.
 - Google Calendar, and `.ics` subscription URLs (files only for now).
-- Printing drives the printer directly on Windows. On macOS and Linux it still hands the PDF
-  to your system's viewer, because Avalonia has no printing of its own.
+- Printing on macOS and Linux. Those still hand the PDF to your system's viewer, because
+  Avalonia has no printing of its own, and the viewer's own scale setting then decides the
+  result. Windows drives the printer directly.
 - Only the month view. A week, an agenda and a tri-fold are planned.
 - A multi-day event repeats as a chip on each day it covers, rather than drawing as one
   spanning bar.
@@ -152,8 +153,8 @@ own unprintable margin near the edges, and only a real sheet tells you whether t
 Needs the .NET 10 SDK.
 
 ```powershell
-dotnet test          # 218 tests, all three platforms in CI
-./publish.ps1        # builds dist\Printendar-v0.1.0-win-x64.zip
+dotnet test          # 240 tests, all three platforms in CI
+./publish.ps1        # builds dist\Printendar-v0.2.0-win-x64.zip
 ```
 
 `publish.ps1` runs the tests first and refuses to publish if any fail.
