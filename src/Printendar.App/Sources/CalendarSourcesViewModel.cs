@@ -117,6 +117,7 @@ public sealed class CalendarSourcesViewModel : INotifyPropertyChanged
         finally
         {
             entry.IsBusy = false;
+            RaiseMissingData();
         }
     }
 
@@ -225,6 +226,8 @@ public sealed class CalendarSourcesViewModel : INotifyPropertyChanged
             }
         }
 
+        RaiseMissingData();
+
         return result;
     }
 
@@ -237,6 +240,18 @@ public sealed class CalendarSourcesViewModel : INotifyPropertyChanged
     ];
 
     public bool AnythingSelected => Sources.Any(s => s.Selected.Count > 0);
+
+    /// <summary>
+    /// One sentence saying the page is incomplete, or null when it is not.
+    /// </summary>
+    /// <remarks>
+    /// Recomputed rather than cached, because it is read at the moment somebody presses Print
+    /// and must describe the list as it is then, not as it was when the window opened.
+    /// </remarks>
+    public string? MissingDataWarning =>
+        MissingCalendarWarning.Describe([.. Sources.Select(s => s.Status)]);
+
+    public bool HasMissingData => MissingDataWarning is not null;
 
     /// <summary>Refreshes the settings this reads Microsoft configuration from.</summary>
     public void UpdateSettings(AppSettings settings) => _settings = settings;
@@ -336,6 +351,21 @@ public sealed class CalendarSourcesViewModel : INotifyPropertyChanged
     {
         Raise(nameof(HasSources));
         Raise(nameof(HasNoSources));
+        RaiseMissingData();
+    }
+
+    /// <summary>
+    /// Repaints the incomplete-page warning.
+    /// </summary>
+    /// <remarks>
+    /// Called from everywhere availability can change: opening, adding, removing, reconnecting
+    /// and reading. Missing one of those would leave a stale banner, and a stale banner about
+    /// stale data is worse than none because it would be trusted.
+    /// </remarks>
+    private void RaiseMissingData()
+    {
+        Raise(nameof(MissingDataWarning));
+        Raise(nameof(HasMissingData));
     }
 
     private void Raise([CallerMemberName] string? name = null) =>

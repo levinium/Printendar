@@ -61,6 +61,20 @@
 
         <TextBlock Classes="sectionHeading" Text="CALENDARS" />
 
+        <!-- A page missing an account''s events still draws perfectly, so nothing about it
+             reveals the problem. This has to be loud, and it stays until it is resolved. -->
+        <Border IsVisible="{Binding Sources.HasMissingData}"
+                Background="#5c1a1a" BorderBrush="#a33" BorderThickness="1"
+                CornerRadius="4" Padding="10" Margin="0,0,0,10">
+          <StackPanel>
+            <TextBlock Text="⚠ This page is incomplete"
+                       FontWeight="SemiBold" Foreground="#ffd7d7" />
+            <TextBlock Text="{Binding Sources.MissingDataWarning}"
+                       TextWrapping="Wrap" FontSize="11" Foreground="#ffd7d7"
+                       Margin="0,4,0,0" />
+          </StackPanel>
+        </Border>
+
         <!-- A list of things, not a row of verbs. Everything that adds, signs into or removes
              a calendar lives behind one button, because those are occasional actions and this
              panel is read every time. -->

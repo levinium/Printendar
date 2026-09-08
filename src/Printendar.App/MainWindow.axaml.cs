@@ -49,9 +49,89 @@ public partial class MainWindow : Window
         await _model.RefreshEventsAsync();
     }
 
+    /// <summary>
+    /// Stops incomplete output leaving the program without the user knowing.
+    /// </summary>
+    /// <remarks>
+    /// Both printing and exporting produce something that looks finished, and neither shows
+    /// any sign that a signed-out account contributed nothing. The sidebar already says so,
+    /// but a banner is easy to stop seeing; this is deliberately in the way, once, at the
+    /// moment it matters.
+    ///
+    /// It warns rather than refuses. Printing the calendars that do work while an account is
+    /// being sorted out is legitimate, and a program that flatly refused would be worked around
+    /// rather than heeded.
+    /// </remarks>
+    private async Task<bool> ConfirmIncompleteAsync(string action)
+    {
+        if (_model.Sources.MissingDataWarning is not { } warning)
+        {
+            return true;
+        }
+
+        var proceed = new Button { Content = $"{action} anyway", Width = 150 };
+        var fix = new Button
+        {
+            Content = "Fix calendars",
+            Width = 130,
+            Margin = new Avalonia.Thickness(0, 0, 8, 0),
+            IsDefault = true,
+        };
+
+        var dialog = new Window
+        {
+            Title = "This page is incomplete",
+            Width = 560,
+            SizeToContent = SizeToContent.Height,
+            CanResize = false,
+            WindowStartupLocation = WindowStartupLocation.CenterOwner,
+        };
+
+        var result = false;
+
+        proceed.Click += (_, _) => { result = true; dialog.Close(); };
+        fix.Click += (_, _) => { result = false; dialog.Close(); };
+
+        dialog.Content = new StackPanel
+        {
+            Margin = new Avalonia.Thickness(18),
+            Children =
+            {
+                new TextBlock
+                {
+                    Text = warning,
+                    TextWrapping = Avalonia.Media.TextWrapping.Wrap,
+                },
+                new StackPanel
+                {
+                    Orientation = Avalonia.Layout.Orientation.Horizontal,
+                    HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Right,
+                    Margin = new Avalonia.Thickness(0, 18, 0, 0),
+                    Children = { fix, proceed },
+                },
+            },
+        };
+
+        await dialog.ShowDialog(this);
+
+        if (!result)
+        {
+            // Taken straight to the place the problem is fixed, rather than told to go and
+            // find it.
+            OnManageCalendars(this, new RoutedEventArgs());
+        }
+
+        return result;
+    }
+
     private async void OnSavePdf(object? sender, RoutedEventArgs e)
     {
         if (_model.Scene is not { } scene)
+        {
+            return;
+        }
+
+        if (!await ConfirmIncompleteAsync("Save"))
         {
             return;
         }
@@ -77,6 +157,12 @@ public partial class MainWindow : Window
     private async void OnPrint(object? sender, RoutedEventArgs e)
     {
         if (_model.Scene is not { } scene)
+        {
+            return;
+        }
+
+        // Before the printer dialog, not after: paper cannot be un-printed.
+        if (!await ConfirmIncompleteAsync("Print"))
         {
             return;
         }

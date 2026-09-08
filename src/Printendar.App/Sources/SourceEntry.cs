@@ -158,6 +158,26 @@ public sealed class SourceEntry : INotifyPropertyChanged
         Configured = Configured with { SelectedCalendarIds = [.. SelectedCalendarIds] };
     }
 
+    /// <summary>
+    /// Whether this source is actually contributing to the page.
+    /// </summary>
+    /// <remarks>
+    /// Deliberately pessimistic. A source with no live connection, or one carrying an error,
+    /// puts nothing on the page, and a page missing events while looking complete is the worst
+    /// outcome this program has. Unticking every calendar is not counted: that is a choice the
+    /// user made, and nagging about it would teach them to ignore the warning that matters.
+    /// </remarks>
+    public SourceStatus Status =>
+        new(
+            Id,
+            DisplayName,
+            Live is null
+                ? SourceAvailability.NotSignedIn
+                : HasError ? SourceAvailability.Failed : SourceAvailability.Ready,
+            Error);
+
+    public bool IsMissingFromPage => Status.IsMissingFromPage;
+
     public IEnumerable<string> SelectedCalendarIds =>
         Calendars.Where(c => c.IsSelected).Select(c => c.Reference.CalendarId);
 
