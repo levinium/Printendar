@@ -5,6 +5,7 @@ using Avalonia.Platform.Storage;
 using Printendar.App.Controls;
 using Printendar.App.Printing;
 using Printendar.Core.Export;
+using Printendar.Core.Printing;
 using Printendar.Sources.Microsoft365;
 
 namespace Printendar.App;
@@ -154,22 +155,40 @@ public partial class MainWindow : Window
         PdfExporter.ExportToFile(scene, path, PdfMetadata.Default with { Title = _model.MonthTitle }, _model.Measurer);
     }
 
-    private void OnPrint(object? sender, RoutedEventArgs e)
+    private async void OnPrint(object? sender, RoutedEventArgs e)
     {
         if (_model.Scene is not { } scene)
         {
             return;
         }
 
-        var outcome = PrintService.Print(
+        if (PrintService.CreatePrinter() is not { } printer)
+        {
+            // No direct printing on this platform. Hand the PDF over and say plainly that the
+            // viewer's own scale setting now matters.
+            var fallback = PrintService.OpenPdfForPrinting(scene, _model.MonthTitle, _model.Measurer);
+
+            if (fallback.Message is { } fallbackMessage)
+            {
+                _model.ReportProblem(fallbackMessage);
+            }
+
+            return;
+        }
+
+        var dialogModel = new PrintDialogViewModel(
+            printer,
             scene,
-            _model.MonthTitle,
-            _model.Measurer,
+            _model.PageSummary,
             (float)_model.MarginInches);
 
-        // Cancelling carries no message, and saying "cancelled" back to somebody who just
-        // pressed Cancel is noise.
-        if (outcome.Message is { } message)
+        var dialog = new PrintDialogWindow(dialogModel, _model.Measurer, _model.MonthTitle);
+
+        var outcome = await dialog.ShowDialog<PrintOutcome?>(this);
+
+        // Cancelling returns null and carries no message. Saying "cancelled" back to somebody
+        // who just pressed Cancel is noise.
+        if (outcome?.Message is { } message)
         {
             _model.ReportProblem(message);
         }

@@ -11,13 +11,17 @@ namespace Printendar.App.Printing;
 /// Gets a laid-out page to a printer.
 /// </summary>
 /// <remarks>
-/// On Windows this is a real print dialog driving a real printer, straight from the scene.
+/// On Windows this drives the printer directly, through Printendar's own print dialog rather
+/// than the operating system's. Windows 11 substitutes its modern dialog for classic printing
+/// calls and its preview pane reports "This app doesn't support print preview" over a dialog
+/// that otherwise works. Showing our own is the better answer anyway: the preview there is the
+/// same scene the printer receives, so it is the page rather than an approximation.
 ///
 /// Everywhere else it still writes a PDF and asks the operating system to open it, because
 /// Avalonia has no printing of its own. That fallback is worth being honest about: it is not
 /// printing, it is handing the user to a viewer whose own dialog decides the scale. A viewer
-/// left on "fit to page" will quietly shrink a layout that was measured against the paper. The
-/// button says so on those platforms rather than pretending otherwise.
+/// left on "fit to page" will quietly shrink a layout measured against the paper, so the
+/// message says so.
 /// </remarks>
 public static class PrintService
 {
@@ -28,27 +32,21 @@ public static class PrintService
     /// Used to label the button honestly. A control that says "Print" and opens a PDF reader
     /// is the kind of small lie that costs a non-technical user their trust in the whole app.
     /// </remarks>
-    public static bool CanPrintDirectly => Printer is not null;
+    public static bool CanPrintDirectly => CreatePrinter() is not null;
 
-    private static IPlatformPrinter? Printer =>
+    public static IPlatformPrinter? CreatePrinter() =>
 #if WINDOWS
         new Printendar.Printing.Windows.WindowsPrintService();
 #else
         null;
 #endif
 
-    public static PrintOutcome Print(
-        ScenePage scene,
-        string title,
-        ITextMeasurer measurer,
-        float layoutMarginInches)
+    /// <summary>
+    /// The fallback for platforms that cannot drive a printer: write the PDF and hand it over.
+    /// </summary>
+    public static PrintOutcome OpenPdfForPrinting(ScenePage scene, string title, ITextMeasurer measurer)
     {
         ArgumentNullException.ThrowIfNull(scene);
-
-        if (Printer is { } printer)
-        {
-            return printer.Print(scene, title, measurer, layoutMarginInches);
-        }
 
         var path = Path.Combine(Path.GetTempPath(), $"{Sanitize(title)}.pdf");
 

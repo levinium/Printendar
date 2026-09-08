@@ -15,24 +15,45 @@ public readonly record struct PrintOutcome(bool Printed, string? Message)
     public static PrintOutcome Failed(string message) => new(false, message);
 }
 
+/// <summary>A printer the user can choose.</summary>
+public readonly record struct PrinterInfo(string Name, bool IsDefault);
+
 /// <summary>
 /// Sends a laid-out page to a printer.
 /// </summary>
 /// <remarks>
-/// An interface because only Windows can drive a printer directly today. Everywhere else falls
-/// back to handing the PDF to the operating system, which is worse but works.
+/// Deliberately does not show the operating system's print dialog. On Windows 11 that dialog
+/// reports "This app doesn't support print preview", because Windows substitutes its modern
+/// dialog for classic printing calls and cannot render a preview for them. Printing works, but
+/// the message is alarming and there is no way to satisfy it from this printing API.
+///
+/// Printendar does not need it. Its own preview is the page: the same scene object, through
+/// the same renderer. So the app asks which printer and prints, and shows the real preview
+/// itself rather than borrowing a worse one.
 ///
 /// It lives in Core, which never references a UI framework, so the contract stays free of any
 /// platform type and the Windows implementation can sit in its own Windows-only project.
 /// </remarks>
 public interface IPlatformPrinter
 {
+    /// <summary>The printers installed on this machine, default first.</summary>
+    IReadOnlyList<PrinterInfo> GetPrinters();
+
     /// <summary>
-    /// Shows the user a print dialog and prints the page at its true physical size.
+    /// The area of the sheet the named printer can put ink on, for a page of this size.
     /// </summary>
-    /// <param name="layoutMarginInches">
-    /// The margin the page was laid out with, so the printer's own unprintable margin can be
-    /// compared against it and the user warned before the paper is used rather than after.
-    /// </param>
-    PrintOutcome Print(ScenePage page, string title, ITextMeasurer measurer, float layoutMarginInches);
+    /// <remarks>
+    /// Queried before printing so the user can be warned that their margin will be clipped
+    /// while they can still change it, rather than after the paper has gone through.
+    /// Null when the printer cannot be interrogated, which is not worth blocking printing over.
+    /// </remarks>
+    PrintableArea? GetPrintableArea(string printerName, float pageWidthPt, float pageHeightPt);
+
+    /// <summary>Prints the page at its true physical size on the named printer.</summary>
+    PrintOutcome Print(
+        ScenePage page,
+        string title,
+        ITextMeasurer measurer,
+        string printerName,
+        int copies);
 }

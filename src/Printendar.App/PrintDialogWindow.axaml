@@ -1,0 +1,61 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:controls="clr-namespace:Printendar.App.Controls"
+        xmlns:vm="clr-namespace:Printendar.App"
+        x:Class="Printendar.App.PrintDialogWindow"
+        x:DataType="vm:PrintDialogViewModel"
+        Title="Print"
+        Width="900" Height="640"
+        MinWidth="640" MinHeight="440"
+        WindowStartupLocation="CenterOwner">
+
+  <DockPanel Margin="16">
+
+    <!-- The buttons never scroll out of reach, so the panel is docked before the content. -->
+    <Border DockPanel.Dock="Bottom" Margin="0,14,0,0">
+      <Grid ColumnDefinitions="*,Auto,Auto">
+        <TextBlock Grid.Column="0"
+                   Text="{Binding Warning}"
+                   IsVisible="{Binding HasWarning}"
+                   TextWrapping="Wrap"
+                   Foreground="#a30000"
+                   FontSize="11"
+                   VerticalAlignment="Center"
+                   Margin="0,0,12,0" />
+        <Button Grid.Column="1" Name="Cancel" Content="Cancel" Width="90" />
+        <Button Grid.Column="2" Name="Confirm" Content="Print" Width="90"
+                Classes="accent" Margin="8,0,0,0"
+                IsEnabled="{Binding CanPrint}" />
+      </Grid>
+    </Border>
+
+    <StackPanel DockPanel.Dock="Right" Width="260" Margin="16,0,0,0">
+      <TextBlock Text="PRINTER" FontSize="12" FontWeight="SemiBold" Opacity="0.75" Margin="0,0,0,4" />
+      <ComboBox ItemsSource="{Binding Printers}"
+                SelectedItem="{Binding SelectedPrinter}"
+                HorizontalAlignment="Stretch" />
+      <TextBlock Text="No printers are installed on this computer."
+                 IsVisible="{Binding HasNoPrinters}"
+                 TextWrapping="Wrap" FontSize="11" Opacity="0.65" Margin="0,4,0,0" />
+
+      <TextBlock Text="COPIES" FontSize="12" FontWeight="SemiBold" Opacity="0.75" Margin="0,16,0,4" />
+      <NumericUpDown Value="{Binding Copies}" Minimum="1" Maximum="99" Increment="1"
+                     FormatString="0" HorizontalAlignment="Stretch" />
+
+      <TextBlock Text="{Binding PageSummary}"
+                 TextWrapping="Wrap" FontSize="11" Opacity="0.7" Margin="0,16,0,0" />
+
+      <TextBlock Text="This is the page. Printendar draws the preview and the printed sheet from the same layout, so they cannot differ."
+                 TextWrapping="Wrap" FontSize="11" Opacity="0.55" Margin="0,12,0,0" />
+    </StackPanel>
+
+    <!-- The same control the main window uses, drawing the same scene object. -->
+    <Border Background="{DynamicResource SystemAltMediumLowColor}" Padding="16">
+      <controls:ScenePreview Name="Preview"
+                             Scene="{Binding Scene}"
+                             HorizontalAlignment="Stretch"
+                             VerticalAlignment="Stretch" />
+    </Border>
+
+  </DockPanel>
+</Window>

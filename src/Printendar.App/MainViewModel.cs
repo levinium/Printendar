@@ -109,6 +109,19 @@ public sealed class MainViewModel : INotifyPropertyChanged
 
     public string MonthTitle => _month.ToDateTime(TimeOnly.MinValue).ToString("MMMM yyyy", CultureInfo.CurrentCulture);
 
+    /// <summary>
+    /// What is about to be printed, in words, for the print dialog's sidebar.
+    /// </summary>
+    /// <remarks>
+    /// Read once when that dialog opens, so it needs no change notification. Saying the paper
+    /// and margin out loud there is the last chance to notice that the page is set to A4 when
+    /// the tray holds Letter.
+    /// </remarks>
+    public string PageSummary =>
+        $"{MonthTitle} on {_paper.DisplayName}, " +
+        $"{(_orientation == Orientation.Landscape ? "landscape" : "portrait")}, " +
+        $"{_marginInches:0.00} inch margin.";
+
     public PaperSize Paper
     {
         get => _paper;

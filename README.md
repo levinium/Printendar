@@ -71,8 +71,14 @@ complain about losing from new Outlook.
 ### The preview is the page
 
 The preview is not an approximation. It draws the same laid-out page object the PDF exporter
-writes, through the same renderer, so what is on screen is what comes out. There is no second
-rendering path to drift.
+writes and the printer receives, through the same renderer, so what is on screen is what comes
+out. There is no second rendering path to drift.
+
+That is also why Printendar shows its own print dialog on Windows rather than the system one.
+Windows 11 substitutes its modern print dialog for classic printing calls and cannot render a
+preview for them, so it reports "This app doesn't support print preview" over a dialog that
+otherwise works. Printendar has the real page already, and shows it, along with the printer,
+the copies, and a warning if your printer's unprintable margin will clip the border.
 
 ## Connecting a calendar
 
@@ -127,9 +133,8 @@ Early, and honest about it.
 
 - Microsoft 365 sign-in needs an application registration, as above.
 - Google Calendar, and `.ics` subscription URLs (files only for now).
-- Printing hands the PDF to your system's own viewer and print dialog rather than driving the
-  printer directly. The page size is baked into the PDF, so the dialog opens already set to
-  landscape.
+- Printing drives the printer directly on Windows. On macOS and Linux it still hands the PDF
+  to your system's viewer, because Avalonia has no printing of its own.
 - Only the month view. A week, an agenda and a tri-fold are planned.
 - A multi-day event repeats as a chip on each day it covers, rather than drawing as one
   spanning bar.
