@@ -69,7 +69,58 @@
                   IsEnabled="{Binding IsMicrosoftConfigured}" />
           <TextBlock Classes="hint"
                      IsVisible="{Binding IsMicrosoftNotConfigured}"
-                     Text="This build cannot sign in to Microsoft 365 yet. Open a calendar file below instead, which needs no account at all." />
+                     Text="This build has no Microsoft app registration. Your IT administrator can point Printendar at your organisation's own, below. Or open a calendar file, which needs no account at all." />
+
+          <!-- Everything an administrator needs, in the app. No script, no environment
+               variable, no editing files by hand. -->
+          <Button Name="MicrosoftSetup"
+                  Content="IT administrator setup"
+                  HorizontalAlignment="Stretch"
+                  Margin="0,4,0,0" />
+
+          <Border IsVisible="{Binding ShowMicrosoftSetup}"
+                  Margin="0,6,0,0" Padding="10" CornerRadius="4"
+                  Background="{DynamicResource SystemAltMediumLowColor}">
+            <StackPanel>
+              <TextBlock Text="Use your organisation's own app registration"
+                         FontWeight="SemiBold" TextWrapping="Wrap" />
+              <TextBlock Classes="hint"
+                         Text="Most organisations do not need this. If your tenant allows it, an administrator can simply approve Printendar once and everyone signs in normally." />
+
+              <Button Name="ApproveForOrganisation"
+                      Content="Approve Printendar for my organisation"
+                      HorizontalAlignment="Stretch"
+                      IsEnabled="{Binding IsMicrosoftConfigured}"
+                      Margin="0,6,0,0" />
+              <TextBlock Classes="hint"
+                         Text="Opens Microsoft's approval page. One click, and everyone in your organisation can sign in." />
+
+              <TextBlock Text="Or register your own" FontWeight="SemiBold" Margin="0,10,0,0" />
+              <Button Name="OpenPortal"
+                      Content="Open the Entra portal"
+                      HorizontalAlignment="Stretch"
+                      Margin="0,4,0,0" />
+              <TextBlock Text="{Binding RegistrationRecipe}"
+                         FontSize="10" TextWrapping="Wrap" Opacity="0.75"
+                         Margin="0,6,0,0" />
+
+              <TextBlock Text="Application (client) ID" Margin="0,10,0,2" FontSize="11" />
+              <TextBox Text="{Binding MicrosoftClientId}"
+                       Watermark="00000000-0000-0000-0000-000000000000" FontSize="11" />
+
+              <TextBlock Text="Tenant (optional)" Margin="0,6,0,2" FontSize="11" />
+              <TextBox Text="{Binding MicrosoftTenant}"
+                       Watermark="common" FontSize="11" />
+
+              <Button Name="SaveMicrosoftRegistration"
+                      Content="Save"
+                      HorizontalAlignment="Stretch"
+                      Classes="accent"
+                      Margin="0,8,0,0" />
+              <TextBlock Classes="hint"
+                         Text="Stored for your Windows account only. The application ID is not a secret: Printendar is a public client app and holds no password." />
+            </StackPanel>
+          </Border>
           <!-- Needs no account and no approval from anybody, so it is offered alongside
                rather than buried: for a lot of people it is the only route that works. -->
           <Button Name="OpenIcsFile"

@@ -1,3 +1,4 @@
+using Printendar.Core.Settings;
 namespace Printendar.Sources.Microsoft365;
 
 /// <summary>
@@ -62,13 +63,47 @@ public sealed record Microsoft365Options
         !string.IsNullOrWhiteSpace(ClientId) &&
         !string.Equals(ClientId, UnconfiguredClientId, StringComparison.OrdinalIgnoreCase);
 
-    /// <summary>Reads the client id from the environment, falling back to the built-in one.</summary>
-    public static Microsoft365Options FromEnvironment()
+    /// <summary>
+    /// Resolves which application registration to sign in with.
+    /// </summary>
+    /// <remarks>
+    /// In order: what an administrator entered in the app, then the environment variable, then
+    /// the one built in.
+    ///
+    /// The in-app setting comes first because it is the one a person can actually reach. The
+    /// environment variable stays for scripted deployments, where setting a machine-wide
+    /// variable is easier than touching a per-user file.
+    /// </remarks>
+    public static Microsoft365Options Resolve(AppSettings? settings = null)
     {
-        var overridden = Environment.GetEnvironmentVariable(ClientIdEnvironmentVariable);
+        if (!string.IsNullOrWhiteSpace(settings?.MicrosoftClientId))
+        {
+            return new Microsoft365Options
+            {
+                ClientId = settings.MicrosoftClientId.Trim(),
+                Tenant = string.IsNullOrWhiteSpace(settings.MicrosoftTenant)
+                    ? "common"
+                    : settings.MicrosoftTenant.Trim(),
+            };
+        }
 
-        return string.IsNullOrWhiteSpace(overridden)
+        var fromEnvironment = Environment.GetEnvironmentVariable(ClientIdEnvironmentVariable);
+
+        return string.IsNullOrWhiteSpace(fromEnvironment)
             ? new Microsoft365Options()
-            : new Microsoft365Options { ClientId = overridden.Trim() };
+            : new Microsoft365Options { ClientId = fromEnvironment.Trim() };
     }
+
+    /// <summary>
+    /// The Entra portal page for creating a new application registration.
+    /// </summary>
+    /// <remarks>
+    /// Offered instead of the app creating the registration itself. Doing that would need
+    /// Application.ReadWrite.All, a documented privilege escalation path: anything holding it
+    /// can add credentials to a privileged application and reach Global Administrator. A
+    /// calendar printer asking for directory write access deserves to be refused, so the app
+    /// sends the administrator to the portal and asks them to paste the id back.
+    /// </remarks>
+    public const string PortalNewRegistrationUrl =
+        "https://entra.microsoft.com/#view/Microsoft_AAD_RegisteredApps/CreateApplicationBlade";
 }

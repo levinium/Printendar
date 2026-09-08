@@ -36,6 +36,14 @@ public partial class MainWindow : Window
         this.FindControl<Button>("Disconnect")!.Click += async (_, _) => await _model.DisconnectAsync();
         this.FindControl<Button>("AdminConsent")!.Click += OnAdminConsent;
         this.FindControl<Button>("OpenIcsFile")!.Click += OnOpenIcsFile;
+        this.FindControl<Button>("MicrosoftSetup")!.Click += OnMicrosoftSetup;
+        this.FindControl<Button>("SaveMicrosoftRegistration")!.Click += OnSaveMicrosoftRegistration;
+        this.FindControl<Button>("OpenPortal")!.Click += OnOpenPortal;
+        this.FindControl<Button>("ApproveForOrganisation")!.Click += OnApproveForOrganisation;
+
+        // Saved settings decide whether the Connect button is available, so load before the
+        // first bindings evaluate.
+        model.LoadSettings();
     }
 
     private async void OnOpenIcsFile(object? sender, RoutedEventArgs e)
@@ -82,21 +90,44 @@ public partial class MainWindow : Window
 
     private async void OnConnectMicrosoft(object? sender, RoutedEventArgs e)
     {
-        var options = Microsoft365Options.FromEnvironment();
+        var options = _model.MicrosoftOptions;
 
         if (!options.IsConfigured)
         {
-            // Says what to do rather than surfacing whatever the identity platform would have
-            // said about an all-zero application id.
-            _model.ReportProblem(
-                "This build has no Microsoft application id, so it cannot sign in. Set the " +
-                $"{Microsoft365Options.ClientIdEnvironmentVariable} environment variable to the client id " +
-                "of an Entra application registration, then start Printendar again.");
+            // The button is disabled in this state, so this is belt and braces rather than the
+            // path anyone takes.
+            _model.ShowMicrosoftSetup = true;
             return;
         }
 
         await _model.ConnectAsync(new GraphCalendarSource(options));
     }
+
+    private void OnMicrosoftSetup(object? sender, RoutedEventArgs e) =>
+        _model.ShowMicrosoftSetup = !_model.ShowMicrosoftSetup;
+
+    private void OnSaveMicrosoftRegistration(object? sender, RoutedEventArgs e) =>
+        _model.SaveMicrosoftRegistration();
+
+    private void OnOpenPortal(object? sender, RoutedEventArgs e) =>
+        Open(MainViewModel.PortalNewRegistrationUrl);
+
+    private void OnApproveForOrganisation(object? sender, RoutedEventArgs e)
+    {
+        if (string.IsNullOrEmpty(_model.MicrosoftAdminConsentUrl))
+        {
+            return;
+        }
+
+        Open(_model.MicrosoftAdminConsentUrl);
+
+        _model.ReportProblem(
+            "Approve Printendar on the page that just opened, then come back and click " +
+            "Connect Microsoft 365.");
+    }
+
+    private static void Open(string url) =>
+        Process.Start(new ProcessStartInfo(url) { UseShellExecute = true });
 
     private async void OnSavePdf(object? sender, RoutedEventArgs e)
     {

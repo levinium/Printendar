@@ -91,12 +91,26 @@ Not in the downloadable build yet. The code is written and tested, but signing i
 Entra application registration that has not been created, so the button is disabled rather
 than failing after you click it.
 
-If you want to run it against your own registration:
+### For IT administrators
 
-```powershell
-scripts/New-PrintendarAppRegistration.ps1     # creates one
-$env:PRINTENDAR_MS_CLIENT_ID = '<your client id>'
-```
+Everything below is in the app, under **IT administrator setup**. No script, no environment
+variable, no editing files.
+
+**Most organisations need only one click.** If your tenant blocks user consent for third-party
+apps, an administrator opens **Approve Printendar for my organisation**, approves once, and
+everyone in the organisation can sign in from then on.
+
+**If you would rather use your own app registration**, the same panel opens the Entra portal,
+shows the exact settings to use, and gives you a box to paste the Application (client) ID into.
+It is saved for your Windows account.
+
+Printendar does not create the registration for you, on purpose. Doing that would need
+`Application.ReadWrite.All`, a documented privilege escalation path: anything holding it can
+add credentials to a privileged application and reach Global Administrator. A calendar printer
+asking for directory write access deserves to be refused.
+
+There is a `scripts/New-PrintendarAppRegistration.ps1` if you would rather automate the
+registration across tenants, but it is an alternative, not the path.
 
 It asks only for read access to calendars, and the token is stored encrypted by your operating
 system: DPAPI on Windows, Keychain on macOS, libsecret on Linux. Nothing is sent anywhere
@@ -133,7 +147,7 @@ own unprintable margin near the edges, and only a real sheet tells you whether t
 Needs the .NET 10 SDK.
 
 ```powershell
-dotnet test          # 201 tests, all three platforms in CI
+dotnet test          # 218 tests, all three platforms in CI
 ./publish.ps1        # builds dist\Printendar-v0.1.0-win-x64.zip
 ```
 

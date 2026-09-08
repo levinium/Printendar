@@ -9,6 +9,7 @@ using Printendar.Core.Model;
 using Printendar.Core.Paper;
 using Printendar.Core.Samples;
 using Printendar.Core.Scene;
+using Printendar.Core.Settings;
 using Printendar.Core.Sources;
 using Printendar.Core.Text;
 using Printendar.Sources.Ics;
@@ -209,17 +210,105 @@ public sealed class MainViewModel : INotifyPropertyChanged
 
     public ObservableCollection<SelectableCalendar> Calendars { get; } = [];
 
+    // ------------------------------------------------------------------ Microsoft setup
+
+    private readonly SettingsStore _settingsStore = new(new DesktopSettingsLocation());
+    private AppSettings _settings = new();
+    private bool _showMicrosoftSetup;
+
+    /// <summary>The registration sign-in will use, given what is saved right now.</summary>
+    public Microsoft365Options MicrosoftOptions => Microsoft365Options.Resolve(_settings);
+
     /// <summary>
-    /// Whether this build carries a Microsoft application id.
+    /// Whether a Microsoft application id is available.
     /// </summary>
     /// <remarks>
-    /// Checked up front rather than on click. A button that looks available and then reports
-    /// that the build cannot sign in wastes the user's time and reads like a fault; a disabled
-    /// button with a sentence explaining why does not.
+    /// Read from the resolved options rather than fixed at construction, so entering an id in
+    /// the window enables the button immediately instead of after a restart.
     /// </remarks>
-    public bool IsMicrosoftConfigured { get; } = Microsoft365Options.FromEnvironment().IsConfigured;
+    public bool IsMicrosoftConfigured => MicrosoftOptions.IsConfigured;
 
     public bool IsMicrosoftNotConfigured => !IsMicrosoftConfigured;
+
+    /// <summary>Whether the "use our own registration" panel is open.</summary>
+    public bool ShowMicrosoftSetup
+    {
+        get => _showMicrosoftSetup;
+        set
+        {
+            _showMicrosoftSetup = value;
+            Raise(nameof(ShowMicrosoftSetup));
+        }
+    }
+
+    /// <summary>An organisation's own application id, as typed into the window.</summary>
+    public string? MicrosoftClientId
+    {
+        get => _settings.MicrosoftClientId;
+        set
+        {
+            _settings = _settings with { MicrosoftClientId = value };
+            Raise(nameof(MicrosoftClientId));
+        }
+    }
+
+    public string? MicrosoftTenant
+    {
+        get => _settings.MicrosoftTenant;
+        set
+        {
+            _settings = _settings with { MicrosoftTenant = value };
+            Raise(nameof(MicrosoftTenant));
+        }
+    }
+
+    /// <summary>Where an administrator approves the registration currently in use.</summary>
+    public string MicrosoftAdminConsentUrl =>
+        MicrosoftOptions.IsConfigured
+            ? Microsoft365Diagnostics.BuildAdminConsentUrl(MicrosoftOptions.ClientId)
+            : string.Empty;
+
+    /// <summary>Where an administrator creates a registration, if they want their own.</summary>
+    public static string PortalNewRegistrationUrl => Microsoft365Options.PortalNewRegistrationUrl;
+
+    /// <summary>The exact settings a new registration needs, shown so nothing is guessed at.</summary>
+    public static string RegistrationRecipe =>
+        "Name: anything, for example Printendar\n" +
+        "Supported account types: accounts in any organizational directory and personal Microsoft accounts\n" +
+        "Redirect URI: Public client/native (mobile & desktop) -> http://localhost\n" +
+        "API permissions, delegated: User.Read, Calendars.Read, Calendars.Read.Shared\n" +
+        "No client secret. Printendar is a public client and holds none.";
+
+    /// <summary>Saves the entered registration and reports what it means.</summary>
+    public void SaveMicrosoftRegistration()
+    {
+        _settingsStore.Save(_settings);
+        _settings = _settingsStore.Load();
+
+        Raise(nameof(MicrosoftClientId));
+        Raise(nameof(MicrosoftTenant));
+        Raise(nameof(IsMicrosoftConfigured));
+        Raise(nameof(IsMicrosoftNotConfigured));
+        Raise(nameof(MicrosoftAdminConsentUrl));
+
+        Status = IsMicrosoftConfigured
+            ? "Saved. Click Connect Microsoft 365 to sign in."
+            : "Cleared. Printendar will use its own registration, if this build has one.";
+
+        ShowMicrosoftSetup = false;
+    }
+
+    /// <summary>Loads saved settings. Called once, when the window is being built.</summary>
+    public void LoadSettings()
+    {
+        _settings = _settingsStore.Load();
+
+        Raise(nameof(MicrosoftClientId));
+        Raise(nameof(MicrosoftTenant));
+        Raise(nameof(IsMicrosoftConfigured));
+        Raise(nameof(IsMicrosoftNotConfigured));
+        Raise(nameof(MicrosoftAdminConsentUrl));
+    }
 
     /// <summary>True while talking to the provider, so the window can disable its controls.</summary>
     public bool IsBusy
