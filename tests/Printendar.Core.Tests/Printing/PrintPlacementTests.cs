@@ -171,6 +171,65 @@ public class PrintPlacementTests
     }
 
     [Fact]
+    public void A_printable_area_reported_in_portrait_is_transposed_for_a_landscape_page()
+    {
+        // Windows reports PageSettings.PrintableArea in portrait whatever the orientation is
+        // set to. Bounds swaps; PrintableArea does not.
+        var reported = new PrintableArea(16.667f, 16.667f, 816.667f, 1066.667f);
+
+        var normalized = PrintPlacement.NormalizeReportedArea(reported, landscape: true);
+
+        Assert.Equal(1066.667f, normalized.Width, 2);
+        Assert.Equal(816.667f, normalized.Height, 2);
+    }
+
+    [Fact]
+    public void A_portrait_page_leaves_the_reported_area_alone()
+    {
+        var reported = new PrintableArea(16.667f, 16.667f, 816.667f, 1066.667f);
+
+        var normalized = PrintPlacement.NormalizeReportedArea(reported, landscape: false);
+
+        Assert.Equal(reported, normalized);
+    }
+
+    [Fact]
+    public void A_real_laser_printer_on_letter_landscape_reports_its_true_hard_margin()
+    {
+        // The regression this exists for. These are the numbers an HP LaserJet Pro M402
+        // actually reports for Letter, and they are identical in both orientations.
+        //
+        // Comparing that portrait rectangle against a landscape sheet gives
+        // 1100 - (16.67 + 816.67) = 266.67 hundredths, and the app told the user their printer
+        // could not print within 2.67 inches of the edge. No printer has such a margin, and
+        // acting on it would have shrunk the calendar to a block in the middle of the sheet.
+        var reported = new PrintableArea(16.667f, 16.667f, 816.667f, 1066.667f);
+
+        var placement = PrintPlacement.Compute(
+            LetterLandscapeWidthPt,
+            LetterLandscapeHeightPt,
+            PrintPlacement.NormalizeReportedArea(reported, landscape: true));
+
+        Assert.Equal(0.1667f, placement.HardMarginInches, 3);
+        Assert.False(placement.WouldClip(layoutMarginInches: 0.4f));
+    }
+
+    [Fact]
+    public void The_default_margin_is_not_clipped_by_a_typical_laser_printer()
+    {
+        // Guards the default itself. 0.4in has to clear the hard margin of ordinary office
+        // hardware, or every user meets a warning on their first print.
+        var reported = new PrintableArea(16.667f, 16.667f, 816.667f, 1066.667f);
+
+        var placement = PrintPlacement.Compute(
+            LetterLandscapeWidthPt,
+            LetterLandscapeHeightPt,
+            PrintPlacement.NormalizeReportedArea(reported, landscape: true));
+
+        Assert.False(placement.WouldClip(0.4f));
+    }
+
+    [Fact]
     public void An_unusable_printable_area_is_rejected_rather_than_dividing_by_zero()
     {
         Assert.Throws<ArgumentOutOfRangeException>(

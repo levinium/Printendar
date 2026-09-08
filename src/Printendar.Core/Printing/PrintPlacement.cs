@@ -55,6 +55,30 @@ public static class PrintPlacement
     /// <summary>Converts PDF points to the hundredths of an inch printing works in.</summary>
     public static float PointsToHundredths(float points) => points / PointsPerInch * HundredthsPerInch;
 
+    /// <summary>
+    /// Turns a printable area as Windows reports it into one matching the page's orientation.
+    /// </summary>
+    /// <remarks>
+    /// Windows reports PageSettings.PrintableArea in portrait whatever the orientation is set
+    /// to. PageSettings.Bounds swaps for landscape; PrintableArea does not, and nothing in the
+    /// API says so.
+    ///
+    /// Left unhandled this is not a small error. An HP LaserJet on Letter reports a printable
+    /// area of 816.67 x 1066.67 in both orientations. Measured against a landscape sheet of
+    /// 1100 x 850 that leaves an apparent right margin of 266.67 hundredths, and the app tells
+    /// the user their printer cannot print within 2.67 inches of the edge. The real figure is
+    /// 0.17 inches. Acting on the wrong one would shrink the calendar to a block adrift in the
+    /// middle of the paper.
+    ///
+    /// The transpose is exact for the symmetric margins essentially all printers have. For an
+    /// asymmetric printer it can name the wrong edge, but the deepest margin it reports is
+    /// still real, and that is what the warning is driven by.
+    /// </remarks>
+    public static PrintableArea NormalizeReportedArea(PrintableArea reported, bool landscape) =>
+        landscape
+            ? new PrintableArea(reported.Y, reported.X, reported.Height, reported.Width)
+            : reported;
+
     public static SheetPlacement Compute(float pageWidthPt, float pageHeightPt, PrintableArea printable)
     {
         ArgumentOutOfRangeException.ThrowIfNegativeOrZero(pageWidthPt);

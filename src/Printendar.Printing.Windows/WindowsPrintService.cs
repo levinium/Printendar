@@ -92,7 +92,11 @@ public sealed class WindowsPrintService : IPlatformPrinter
 
             var printable = page.PrintableArea;
 
-            return new PrintableArea(printable.X, printable.Y, printable.Width, printable.Height);
+            // Reported in portrait whatever the orientation says, so it has to be turned to
+            // match the page or the margins are measured against the wrong two edges.
+            return PrintPlacement.NormalizeReportedArea(
+                new PrintableArea(printable.X, printable.Y, printable.Width, printable.Height),
+                page.Landscape);
         }
         catch (Exception ex) when (ex is InvalidPrinterException or System.ComponentModel.Win32Exception)
         {
@@ -144,7 +148,9 @@ public sealed class WindowsPrintService : IPlatformPrinter
             var placement = PrintPlacement.Compute(
                 widthPt,
                 heightPt,
-                new PrintableArea(printable.X, printable.Y, printable.Width, printable.Height));
+                PrintPlacement.NormalizeReportedArea(
+                    new PrintableArea(printable.X, printable.Y, printable.Width, printable.Height),
+                    e.PageSettings.Landscape));
 
             using var bitmap = RenderToGdiBitmap(page, measurer, widthPt, heightPt);
 
