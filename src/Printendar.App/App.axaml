@@ -5,6 +5,12 @@
 
   <Application.Styles>
     <FluentTheme />
+    <!--
+      The colour picker ships its theme in its own assembly rather than in FluentTheme, so
+      without this line the spectrum and its sliders are present, hit-testable and completely
+      unstyled. Referencing the package is not enough on its own.
+    -->
+    <StyleInclude Source="avares://Avalonia.Controls.ColorPicker/Themes/Fluent/Fluent.xaml" />
   </Application.Styles>
 
 </Application>

@@ -95,11 +95,29 @@ public sealed record ConfiguredSource(
     /// </remarks>
     public IReadOnlyList<string> SelectedCalendarIds { get; init; } = [];
 
+    /// <summary>
+    /// The printed colour of each calendar in this source, by calendar id, as #RRGGBB.
+    /// </summary>
+    /// <remarks>
+    /// Written down for every calendar, not only the ones somebody chose by hand. Colours used
+    /// to be handed out by position at start-up, so removing an account renumbered the rest and
+    /// the whole wall chart changed colour behind the user's back. Remembering the first answer
+    /// makes a calendar's colour its own, and makes an explicit choice nothing more than that
+    /// same value written by a different hand.
+    /// </remarks>
+    public IReadOnlyDictionary<string, string> CalendarColors { get; init; } =
+        new Dictionary<string, string>(StringComparer.Ordinal);
+
     /// <summary>Whether this entry is usable, as opposed to something a file edit produced.</summary>
     /// <remarks>
     /// The id addresses the source everywhere else, so a blank one is not a source. Location is
     /// required for the kinds that have nowhere else to look.
+    ///
+    /// Kept out of the file because it is derived from the fields above rather than chosen.
+    /// Written out it would read as a switch, and someone editing the settings to disable a
+    /// calendar would set it to false and see nothing happen.
     /// </remarks>
+    [JsonIgnore]
     public bool IsUsable =>
         !string.IsNullOrWhiteSpace(Id) &&
         !string.IsNullOrWhiteSpace(DisplayName) &&

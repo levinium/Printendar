@@ -57,23 +57,45 @@
               <DataTemplate x:DataType="src:SourceEntry">
                 <Border Padding="10" Margin="0,0,0,8" CornerRadius="4"
                         Background="{DynamicResource SystemAltMediumLowColor}">
-                  <Grid ColumnDefinitions="*,Auto,Auto">
-                    <StackPanel Grid.Column="0">
-                      <TextBox Text="{Binding EditableName}" FontWeight="SemiBold"
-                               BorderThickness="0" Padding="0" Background="Transparent"
-                               ToolTip.Tip="Rename this calendar" />
-                      <TextBlock Text="{Binding KindLabel}" FontSize="10" Opacity="0.55" />
+                  <Grid ColumnDefinitions="*,Auto,Auto,Auto">
+                    <StackPanel Grid.Column="0" VerticalAlignment="Center">
+
+                      <!-- Two controls rather than one box styled to look like both. Off, this
+                           is plainly text; on, it is an ordinary text field with the border the
+                           theme gives every other one, so which state you are in is never in
+                           doubt. -->
+                      <TextBlock Text="{Binding DisplayName}" FontWeight="SemiBold"
+                                 IsVisible="{Binding IsNotEditingName}"
+                                 TextTrimming="CharacterEllipsis" />
+
+                      <TextBox Name="NameBox" Text="{Binding EditableName}"
+                               IsVisible="{Binding IsEditingName}"
+                               FontWeight="SemiBold" MinWidth="180"
+                               KeyDown="OnNameKeyDown" />
+
+                      <TextBlock Text="{Binding KindLabel}" FontSize="10" Opacity="0.55"
+                                 Margin="0,2,0,0" />
                       <TextBlock Text="{Binding Error}"
                                  IsVisible="{Binding HasError}"
                                  FontSize="11" Foreground="#a30000"
                                  TextWrapping="Wrap" Margin="0,4,0,0" />
                     </StackPanel>
 
-                    <Button Grid.Column="1" Content="Reconnect" Margin="8,0,0,0"
+                    <Button Grid.Column="1" Name="RenameButton"
+                            Content="{Binding RenameButtonLabel}"
+                            Width="34" Margin="8,0,0,0"
+                            HorizontalContentAlignment="Center"
+                            VerticalAlignment="Top"
+                            ToolTip.Tip="Rename this calendar"
+                            Click="OnToggleRename" />
+
+                    <Button Grid.Column="2" Content="Reconnect" Margin="8,0,0,0"
+                            VerticalAlignment="Top"
                             Command="{Binding ReconnectCommand}"
                             CommandParameter="{Binding}" />
 
-                    <Button Grid.Column="2" Content="Remove" Margin="8,0,0,0"
+                    <Button Grid.Column="3" Content="Remove" Margin="8,0,0,0"
+                            VerticalAlignment="Top"
                             Command="{Binding RemoveCommand}"
                             CommandParameter="{Binding}" />
                   </Grid>

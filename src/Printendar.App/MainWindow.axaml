@@ -32,6 +32,30 @@
     <Style Selector="TextBlock.hint:empty">
       <Setter Property="IsVisible" Value="False" />
     </Style>
+
+    <!-- The colour square beside a calendar. Sized and padded down to look like the swatch it
+         replaced rather than like a button, since it sits inside a list of names. -->
+    <Style Selector="Button.swatch">
+      <Setter Property="Width" Value="14" />
+      <Setter Property="Height" Value="14" />
+      <Setter Property="MinWidth" Value="0" />
+      <Setter Property="MinHeight" Value="0" />
+      <Setter Property="Padding" Value="0" />
+      <Setter Property="CornerRadius" Value="3" />
+      <Setter Property="BorderThickness" Value="0" />
+      <Setter Property="VerticalAlignment" Value="Center" />
+    </Style>
+
+    <Style Selector="Button.colorchoice">
+      <Setter Property="Width" Value="30" />
+      <Setter Property="Height" Value="30" />
+      <Setter Property="MinWidth" Value="0" />
+      <Setter Property="MinHeight" Value="0" />
+      <Setter Property="Padding" Value="0" />
+      <Setter Property="Margin" Value="0,0,6,6" />
+      <Setter Property="CornerRadius" Value="4" />
+      <Setter Property="BorderThickness" Value="0" />
+    </Style>
   </Window.Styles>
 
   <DockPanel>
@@ -96,13 +120,49 @@
                 <ItemsControl ItemsSource="{Binding Calendars}" Margin="8,4,0,0">
                   <ItemsControl.ItemTemplate>
                     <DataTemplate x:DataType="vm:SelectableCalendar">
-                      <CheckBox IsChecked="{Binding IsSelected}" Margin="0,0,0,2">
-                        <StackPanel Orientation="Horizontal" Spacing="6">
-                          <Border Width="10" Height="10" CornerRadius="2"
-                                  Background="{Binding Swatch}" VerticalAlignment="Center" />
+                      <StackPanel Orientation="Horizontal" Spacing="4" Margin="0,0,0,2">
+
+                        <!-- The swatch was already here showing the printed colour, so it is
+                             the obvious thing to click to change it: no new screen, and it is
+                             in front of you at the moment two calendars look alike. -->
+                        <Button Classes="swatch" Background="{Binding Swatch}"
+                                ToolTip.Tip="Change the colour this calendar prints in">
+                          <Button.Flyout>
+                            <Flyout Placement="Bottom">
+                              <StackPanel Spacing="8">
+                                <TextBlock Text="PRINTS IN" FontWeight="SemiBold" FontSize="11"
+                                           Opacity="0.75" />
+                                <ItemsControl ItemsSource="{Binding Choices}">
+                                  <ItemsControl.ItemsPanel>
+                                    <ItemsPanelTemplate>
+                                      <WrapPanel MaxWidth="152" />
+                                    </ItemsPanelTemplate>
+                                  </ItemsControl.ItemsPanel>
+                                  <ItemsControl.ItemTemplate>
+                                    <DataTemplate x:DataType="vm:CalendarColorChoice">
+                                      <Button Classes="colorchoice"
+                                              Background="{Binding Swatch}"
+                                              Command="{Binding Choose}">
+                                        <TextBlock Text="✓" IsVisible="{Binding IsCurrent}"
+                                                   Foreground="White" FontWeight="Bold"
+                                                   HorizontalAlignment="Center"
+                                                   VerticalAlignment="Center" />
+                                      </Button>
+                                    </DataTemplate>
+                                  </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                                <Button Content="Custom…" HorizontalAlignment="Stretch"
+                                        HorizontalContentAlignment="Center"
+                                        Click="OnCustomColor" />
+                              </StackPanel>
+                            </Flyout>
+                          </Button.Flyout>
+                        </Button>
+
+                        <CheckBox IsChecked="{Binding IsSelected}" VerticalAlignment="Center">
                           <TextBlock Text="{Binding DisplayName}" TextTrimming="CharacterEllipsis" />
-                        </StackPanel>
-                      </CheckBox>
+                        </CheckBox>
+                      </StackPanel>
                     </DataTemplate>
                   </ItemsControl.ItemTemplate>
                 </ItemsControl>

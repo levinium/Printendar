@@ -1,6 +1,7 @@
 using System.ComponentModel;
-using System.Runtime.CompilerServices;
+using System.Windows.Input;
 using Avalonia.Media;
+using Printendar.App.Sources;
 using Printendar.Core.Sources;
 using SkiaSharp;
 
@@ -12,21 +13,51 @@ namespace Printendar.App;
 public sealed class SelectableCalendar : INotifyPropertyChanged
 {
     private bool _isSelected;
+    private SKColor _color;
 
     public SelectableCalendar(CalendarRef reference, SKColor color)
     {
         Reference = reference;
-        Color = color;
+        _color = color;
         _isSelected = reference.IsDefault;
+
+        Choices = [.. CalendarPalette.Colors.Select(c => new CalendarColorChoice(c, this))];
     }
 
     public event PropertyChangedEventHandler? PropertyChanged;
 
+    /// <summary>Raised when the printed colour changes, so it can be remembered.</summary>
+    public event EventHandler? ColorChanged;
+
     public CalendarRef Reference { get; }
 
-    public SKColor Color { get; }
-
     public string DisplayName => Reference.DisplayName;
+
+    /// <summary>The colours offered when the swatch is clicked.</summary>
+    public IReadOnlyList<CalendarColorChoice> Choices { get; }
+
+    public SKColor Color
+    {
+        get => _color;
+        set
+        {
+            if (_color == value)
+            {
+                return;
+            }
+
+            _color = value;
+            Raise(nameof(Color));
+            Raise(nameof(Swatch));
+
+            foreach (var choice in Choices)
+            {
+                choice.RefreshIsCurrent();
+            }
+
+            ColorChanged?.Invoke(this, EventArgs.Empty);
+        }
+    }
 
     /// <summary>The swatch beside the name, matching the colour it prints in.</summary>
     public IBrush Swatch => new SolidColorBrush(Avalonia.Media.Color.FromArgb(
@@ -43,40 +74,54 @@ public sealed class SelectableCalendar : INotifyPropertyChanged
             }
 
             _isSelected = value;
-            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(IsSelected)));
+            Raise(nameof(IsSelected));
             SelectionChanged?.Invoke(this, EventArgs.Empty);
         }
     }
 
     public event EventHandler? SelectionChanged;
+
+    private void Raise(string name) =>
+        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(name));
 }
 
 /// <summary>
-/// The colours calendars are printed in.
+/// One colour on the swatch menu.
 /// </summary>
 /// <remarks>
-/// Assigned by Printendar rather than read from the provider. Graph exposes category names but
-/// not the colour values Outlook actually shows, and Google's palette is different again, so
-/// reading them would give an inconsistent set that still had to be remapped.
-///
-/// Chosen to stay distinguishable for the common forms of colour blindness, and to separate
-/// into different greys when printed in black and white, which is how most of these end up on
-/// a wall.
+/// Carries its own command rather than being applied by a handler on the window. A colour
+/// button lives three templates deep, inside a calendar, inside a source; binding it back up to
+/// the window's view model needs a parent lookup and a cast that compiled bindings cannot check,
+/// so a typo there fails silently at runtime instead of at build time.
 /// </remarks>
-public static class CalendarPalette
+public sealed class CalendarColorChoice : INotifyPropertyChanged
 {
-    private static readonly SKColor[] Colors =
-    [
-        new(0x1F, 0x77, 0xB4),
-        new(0xD6, 0x27, 0x28),
-        new(0x2C, 0xA0, 0x2C),
-        new(0x94, 0x67, 0xBD),
-        new(0xFF, 0x7F, 0x0E),
-        new(0x8C, 0x56, 0x4B),
-        new(0x17, 0xBE, 0xCF),
-        new(0x7F, 0x7F, 0x7F),
-    ];
+    private readonly SelectableCalendar _calendar;
 
-    /// <summary>Assigns a colour by position, wrapping once the palette runs out.</summary>
-    public static SKColor At(int index) => Colors[((index % Colors.Length) + Colors.Length) % Colors.Length];
+    public CalendarColorChoice(SKColor color, SelectableCalendar calendar)
+    {
+        _calendar = calendar;
+        Color = color;
+
+        Choose = new RelayCommand(_ =>
+        {
+            calendar.Color = color;
+            return Task.CompletedTask;
+        });
+    }
+
+    public event PropertyChangedEventHandler? PropertyChanged;
+
+    public SKColor Color { get; }
+
+    public ICommand Choose { get; }
+
+    public IBrush Swatch => new SolidColorBrush(Avalonia.Media.Color.FromArgb(
+        Color.Alpha, Color.Red, Color.Green, Color.Blue));
+
+    /// <summary>Marks the colour this calendar is currently using, so the menu shows state.</summary>
+    public bool IsCurrent => _calendar.Color == Color;
+
+    internal void RefreshIsCurrent() =>
+        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(IsCurrent)));
 }

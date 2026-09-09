@@ -34,6 +34,13 @@
     <PackageVersion Include="Avalonia.Themes.Fluent" Version="12.1.2" />
     <PackageVersion Include="Avalonia.Skia" Version="12.1.2" />
     <PackageVersion Include="Avalonia.Headless.XUnit" Version="12.1.2" />
+    <!--
+      The spectrum-and-slider colour picker, first-party and versioned with the rest of
+      Avalonia. Written by hand this is HSV conversion, gradient bitmaps and drag handling for
+      a control every graphics program already has; asking somebody to type a hex code instead
+      is not a simpler app, only a lazier one.
+    -->
+    <PackageVersion Include="Avalonia.Controls.ColorPicker" Version="12.1.2" />
   </ItemGroup>
 
   <ItemGroup>

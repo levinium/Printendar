@@ -25,6 +25,7 @@
     <PackageReference Include="Avalonia" />
     <PackageReference Include="Avalonia.Desktop" />
     <PackageReference Include="Avalonia.Themes.Fluent" />
+    <PackageReference Include="Avalonia.Controls.ColorPicker" />
     <!--
       Referenced explicitly, not just transitively. The preview control leases the SKCanvas
       from Avalonia's Skia renderer so that Printendar's own SceneRenderer draws onto it, and

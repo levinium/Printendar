@@ -2,6 +2,7 @@ using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
 using Printendar.Core.Sources;
+using SkiaSharp;
 
 namespace Printendar.App.Sources;
 
@@ -17,6 +18,7 @@ public sealed class SourceEntry : INotifyPropertyChanged
 {
     private string? _error;
     private bool _isBusy;
+    private bool _isEditingName;
 
     public SourceEntry(ConfiguredSource configured)
     {
@@ -77,6 +79,31 @@ public sealed class SourceEntry : INotifyPropertyChanged
         }
     }
 
+    /// <summary>
+    /// Whether the name is currently open for editing.
+    /// </summary>
+    /// <remarks>
+    /// The name used to be a permanently editable box drawn without a border, which read as a
+    /// label: nobody could tell it could be changed. Off, the name is plain text; on, it is an
+    /// ordinary bordered text box that looks like every other field a person has ever typed in.
+    /// </remarks>
+    public bool IsEditingName
+    {
+        get => _isEditingName;
+        set
+        {
+            _isEditingName = value;
+            Raise(nameof(IsEditingName));
+            Raise(nameof(IsNotEditingName));
+            Raise(nameof(RenameButtonLabel));
+        }
+    }
+
+    public bool IsNotEditingName => !_isEditingName;
+
+    /// <summary>Pencil to start, tick to finish, on the one button that toggles it.</summary>
+    public string RenameButtonLabel => _isEditingName ? "✓" : "✎";
+
     /// <summary>Renaming and removing, as the manage window's buttons call them.</summary>
     /// <remarks>
     /// Held on the entry rather than reached for through the visual tree. Binding a button
@@ -131,32 +158,57 @@ public sealed class SourceEntry : INotifyPropertyChanged
     /// calendar is ticked. Falling back to nothing would show a connected account whose month
     /// is blank, which reads as a failure.
     /// </remarks>
-    public void SetCalendars(IReadOnlyList<CalendarRef> calendars, int paletteOffset)
+    public void SetCalendars(IReadOnlyList<CalendarRef> calendars, IReadOnlyCollection<SKColor> colorsInUseElsewhere)
     {
         Calendars.Clear();
 
         var remembered = Configured.SelectedCalendarIds;
 
-        for (var i = 0; i < calendars.Count; i++)
+        var colors = CalendarColorAssignment.Assign(
+            [.. calendars.Select(c => c.CalendarId)],
+            Configured.CalendarColors,
+            colorsInUseElsewhere);
+
+        foreach (var calendar in calendars)
         {
-            var selectable = new SelectableCalendar(calendars[i], CalendarPalette.At(paletteOffset + i))
+            var selectable = new SelectableCalendar(calendar, colors[calendar.CalendarId])
             {
                 IsSelected = remembered.Count > 0
-                    ? remembered.Contains(calendars[i].CalendarId)
-                    : calendars[i].IsDefault,
+                    ? remembered.Contains(calendar.CalendarId)
+                    : calendar.IsDefault,
             };
 
             selectable.SelectionChanged += (_, _) =>
             {
-                Configured = Configured with { SelectedCalendarIds = [.. SelectedCalendarIds] };
+                RecordCalendarState();
+                SelectionChanged?.Invoke(this, EventArgs.Empty);
+            };
+
+            selectable.ColorChanged += (_, _) =>
+            {
+                RecordCalendarState();
                 SelectionChanged?.Invoke(this, EventArgs.Empty);
             };
 
             Calendars.Add(selectable);
         }
 
-        Configured = Configured with { SelectedCalendarIds = [.. SelectedCalendarIds] };
+        // Written down straight away, including the colours just handed out. Leaving them only
+        // in memory would mean they were worked out afresh on every start, which is the drift
+        // this was meant to stop.
+        RecordCalendarState();
     }
+
+    /// <summary>Copies what is ticked and what colour each calendar is into the saved shape.</summary>
+    private void RecordCalendarState() =>
+        Configured = Configured with
+        {
+            SelectedCalendarIds = [.. SelectedCalendarIds],
+            CalendarColors = Calendars.ToDictionary(
+                c => c.Reference.CalendarId,
+                c => CalendarPalette.ToHex(c.Color),
+                StringComparer.Ordinal),
+        };
 
     /// <summary>
     /// Whether this source is actually contributing to the page.

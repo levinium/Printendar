@@ -1,0 +1,42 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        x:Class="Printendar.App.ColorPickerWindow"
+        Title="Choose a colour"
+        SizeToContent="WidthAndHeight"
+        CanResize="False"
+        WindowStartupLocation="CenterOwner">
+
+  <StackPanel Margin="16" Spacing="10">
+
+    <TextBlock Name="Explanation" TextWrapping="Wrap" MaxWidth="360" />
+
+    <!--
+      ColorSpectrumComponents is the important one. Avalonia defaults to HueSaturation, which
+      puts hue across an axis of the square and brightness on the slider: a rainbow block that
+      reads as banded and matches nothing anybody has used. SaturationValue is the arrangement
+      every graphics program has settled on, one hue at a time in the square with hue on the
+      slider, so the square is a smooth gradient.
+
+      Alpha is off on purpose: a half-transparent chip on paper is only a paler chip, and the
+      palest colours are precisely the ones that cannot be read.
+    -->
+    <ColorView Name="Picker"
+               ColorSpectrumComponents="SaturationValue"
+               ColorSpectrumShape="Box"
+               IsAlphaEnabled="False"
+               IsAlphaVisible="False"
+               IsColorPaletteVisible="False"
+               HorizontalAlignment="Center" />
+
+    <Border Name="Preview" Height="38" CornerRadius="4" />
+
+    <TextBlock Name="Warning" FontSize="11" Foreground="Firebrick"
+               TextWrapping="Wrap" MaxWidth="360" IsVisible="False" />
+
+    <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="8">
+      <Button Name="CancelButton" Content="Cancel" Width="90" />
+      <Button Name="ApplyButton" Content="Use it" Width="90" IsDefault="True" Classes="accent" />
+    </StackPanel>
+
+  </StackPanel>
+</Window>

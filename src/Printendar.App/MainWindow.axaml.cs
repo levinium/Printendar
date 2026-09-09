@@ -5,6 +5,8 @@ using Printendar.App.Controls;
 using Printendar.App.Printing;
 using Printendar.Core.Export;
 using Printendar.Core.Printing;
+using Printendar.Core.Sources;
+using SkiaSharp;
 
 namespace Printendar.App;
 
@@ -37,6 +39,33 @@ public partial class MainWindow : Window
         // so the window appears at once and the calendars fill in as they answer.
         _ = model.LoadSettingsAsync();
     }
+
+    /// <summary>Opens the spectrum picker for a colour outside the eight offered.</summary>
+    private async void OnCustomColor(object? sender, RoutedEventArgs e)
+    {
+        if (sender is not Control { DataContext: SelectableCalendar calendar })
+        {
+            return;
+        }
+
+        // Every other calendar's colour goes in, so the picker can say which one a near-miss
+        // is near. Naming it is the difference between a warning and a riddle.
+        var others = _model.Sources.Sources
+            .SelectMany(source => source.Calendars)
+            .Where(other => !ReferenceEquals(other, calendar))
+            .Select(other => new NamedColor(other.DisplayName, other.Color))
+            .ToList();
+
+        var picker = new ColorPickerWindow(calendar.DisplayName, calendar.Color, others);
+
+        await picker.ShowDialog(this);
+
+        if (picker.Chosen is { } chosen)
+        {
+            calendar.Color = chosen;
+        }
+    }
+
 
     private async void OnManageCalendars(object? sender, RoutedEventArgs e)
     {

@@ -7,6 +7,7 @@ using Printendar.Core.Settings;
 using Printendar.Core.Sources;
 using Printendar.Sources.Ics;
 using Printendar.Sources.Microsoft365;
+using SkiaSharp;
 
 namespace Printendar.App.Sources;
 
@@ -58,6 +59,10 @@ public sealed class CalendarSourcesViewModel : INotifyPropertyChanged
             await OpenAsync(entry, cancellationToken).ConfigureAwait(true);
         }
 
+        // Opening settles a colour for any calendar seen for the first time. Saving here is
+        // what makes it stick: left in memory it would be worked out again on the next run,
+        // and a calendar added or removed in between would shift the rest.
+        Persist();
         Changed?.Invoke(this, EventArgs.Empty);
     }
 
@@ -101,7 +106,7 @@ public sealed class CalendarSourcesViewModel : INotifyPropertyChanged
 
             var calendars = await source.ListCalendarsAsync(cancellationToken).ConfigureAwait(true);
 
-            entry.SetCalendars(calendars, PaletteOffsetFor(entry));
+            entry.SetCalendars(calendars, ColorsInUseExcept(entry));
         }
         catch (Microsoft365SignInException ex)
         {
@@ -122,29 +127,24 @@ public sealed class CalendarSourcesViewModel : INotifyPropertyChanged
     }
 
     /// <summary>
-    /// Where this source starts in the colour palette.
+    /// The colours every other source is already printing in.
     /// </summary>
     /// <remarks>
-    /// Counted across the sources before it so two calendars never print in the same colour
-    /// while a legend claims they are different. Restarting the palette per source would do
-    /// exactly that as soon as somebody added a second account.
+    /// Passed in so a calendar being seen for the first time can be given one nobody else is
+    /// using. Two calendars in the same colour, under a legend saying they are different, is
+    /// the one outcome worth going out of the way to avoid.
+    ///
+    /// This replaced counting positions across the whole list, which decided a colour by where
+    /// a calendar happened to sit. Removing a source renumbered everything below it and the
+    /// printed page silently changed colour from one week to the next.
     /// </remarks>
-    private int PaletteOffsetFor(SourceEntry entry)
-    {
-        var offset = 0;
-
-        foreach (var other in Sources)
-        {
-            if (ReferenceEquals(other, entry))
-            {
-                break;
-            }
-
-            offset += other.Calendars.Count;
-        }
-
-        return offset;
-    }
+    private IReadOnlyCollection<SKColor> ColorsInUseExcept(SourceEntry entry) =>
+    [
+        .. Sources
+            .Where(other => !ReferenceEquals(other, entry))
+            .SelectMany(other => other.Calendars)
+            .Select(calendar => calendar.Color)
+    ];
 
     public async Task AddAsync(ConfiguredSource configured, CancellationToken cancellationToken = default)
     {
@@ -318,7 +318,7 @@ public sealed class CalendarSourcesViewModel : INotifyPropertyChanged
                 await live.ConnectAsync(cancellationToken).ConfigureAwait(true);
 
                 var calendars = await live.ListCalendarsAsync(cancellationToken).ConfigureAwait(true);
-                entry.SetCalendars(calendars, PaletteOffsetFor(entry));
+                entry.SetCalendars(calendars, ColorsInUseExcept(entry));
             }
         }
         catch (Microsoft365SignInException ex)
@@ -371,13 +371,48 @@ public sealed class CalendarSourcesViewModel : INotifyPropertyChanged
     private void Raise([CallerMemberName] string? name = null) =>
         PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(name!));
 
+    /// <summary>Checks a picked file is usable, and suggests what to call it.</summary>
+    /// <remarks>
+    /// Separate from <see cref="ForFile"/> so the name can be put in front of the user before
+    /// the source is created, rather than chosen for them and left to be discovered later.
+    /// </remarks>
+    public static string SuggestNameForFile(string path) => IcsFileCalendarSource.Validate(path);
+
+    /// <summary>
+    /// The best guess at a name for a feed address, or null when it is not a usable address.
+    /// </summary>
+    /// <remarks>
+    /// Only ever a starting point in a box the user can type over. A published feed's address
+    /// says almost nothing about the calendar behind it: the path is usually an opaque token,
+    /// which leaves the host, and "calendar.google.com" is the name of a company's server rather
+    /// than of anybody's calendar. No amount of parsing fixes that, so the fix is to ask.
+    /// </remarks>
+    public static string? SuggestNameForUrl(string url)
+    {
+        try
+        {
+            return IcsUrlCalendarSource.NormalizeUrl(url).Host;
+        }
+        catch (Exception)
+        {
+            // Half-typed addresses are the normal case while a suggestion is being shown.
+            return null;
+        }
+    }
+
     /// <summary>Makes a source from a file the user picked.</summary>
-    public static ConfiguredSource ForFile(string path) =>
-        new(
+    public static ConfiguredSource ForFile(string path, string? displayName = null)
+    {
+        // Validated even when the name came from the user, so a missing or absurd file is still
+        // refused rather than added as a broken entry.
+        var suggested = SuggestNameForFile(path);
+
+        return new ConfiguredSource(
             Id: Guid.NewGuid().ToString("N"),
             Kind: CalendarSourceKind.IcsFile,
-            DisplayName: IcsFileCalendarSource.Validate(path),
+            DisplayName: string.IsNullOrWhiteSpace(displayName) ? suggested : displayName.Trim(),
             Location: path);
+    }
 
     /// <summary>Makes a source from a feed address the user pasted.</summary>
     public static ConfiguredSource ForUrl(string url, string? displayName)
