@@ -142,9 +142,9 @@ always black on white.
 
 **Not built yet:**
 
-- Printing on macOS and Linux. Those still hand the PDF to your system's viewer, because
-  Avalonia has no printing of its own, and the viewer's own scale setting then decides the
-  result. Windows drives the printer directly.
+- Nobody has watched macOS or Linux printing work. It is built and its commands are pinned by
+  tests, but no sheet has come out of a printer on either, so treat the first one you print as
+  the test. Windows printing has been confirmed on real hardware.
 - Only the month view. A week, an agenda and a tri-fold are planned.
 - A multi-day event repeats as a chip on each day it covers, rather than drawing as one
   spanning bar.
@@ -167,7 +167,7 @@ own unprintable margin near the edges, and only a real sheet tells you whether t
 Needs the .NET 10 SDK.
 
 ```powershell
-dotnet test          # 294 tests, all three platforms in CI
+dotnet test          # 314 tests, all three platforms in CI
 ./publish.ps1        # builds dist\Printendar-v0.3.0-win-x64.zip
 ```
 
@@ -184,6 +184,7 @@ dotnet run --project src/Printendar.Cli -- render --month 2026-03 --demo --out m
 ```
 src/Printendar.Core/                 paper, layout, the scene graph, rendering, PDF export
 src/Printendar.Sources.Ics/          iCalendar files and published feeds
+src/Printendar.Printing.Cups/        printing on macOS and Linux
 src/Printendar.App/                  the Avalonia window
 src/Printendar.Cli/                  headless harness
 tests/Printendar.Core.Tests/         the engine, no UI

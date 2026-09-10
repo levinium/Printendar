@@ -1,0 +1,18 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <!--
+      Plain net10.0, unlike the Windows print shim. CUPS is reached by running lp and lpstat,
+      which needs no platform API and no platform-specific framework, so this compiles and is
+      referenced everywhere. Whether it is used is decided at runtime by which operating
+      system is running and whether lp is actually installed.
+    -->
+    <TargetFramework>net10.0</TargetFramework>
+    <RootNamespace>Printendar.Printing.Cups</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Printendar.Core\Printendar.Core.csproj" />
+  </ItemGroup>
+
+</Project>

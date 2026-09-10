@@ -26,6 +26,9 @@
   <ItemGroup>
     <ProjectReference Include="..\..\src\Printendar.Core\Printendar.Core.csproj" />
     <ProjectReference Include="..\..\src\Printendar.Sources.Ics\Printendar.Sources.Ics.csproj" />
+    <!-- The CUPS command builder and printer-list parser are pure text, so they belong in the
+         portable suite that runs on all three platforms rather than only where CUPS exists. -->
+    <ProjectReference Include="..\..\src\Printendar.Printing.Cups\Printendar.Printing.Cups.csproj" />
   </ItemGroup>
 
   <ItemGroup>

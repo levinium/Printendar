@@ -5,6 +5,7 @@
     <Project Path="src/Printendar.App/Printendar.App.csproj" />
     <Project Path="src/Printendar.Printing.Windows/Printendar.Printing.Windows.csproj" />
     <Project Path="src/Printendar.Sources.Ics/Printendar.Sources.Ics.csproj" />
+    <Project Path="src/Printendar.Printing.Cups/Printendar.Printing.Cups.csproj" />
   </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/Printendar.Core.Tests/Printendar.Core.Tests.csproj" />

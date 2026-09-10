@@ -34,11 +34,22 @@ public static class PrintService
     /// </remarks>
     public static bool CanPrintDirectly => CreatePrinter() is not null;
 
+    /// <summary>
+    /// The printer for this platform, or null when there is none.
+    /// </summary>
+    /// <remarks>
+    /// Windows is decided at compile time, because its shim needs a Windows-only framework and
+    /// must not exist in the portable build. CUPS is decided at runtime, because that project
+    /// is plain net10.0 and ships everywhere: what varies is whether lp is actually installed,
+    /// which a Linux box without cups-client will not have.
+    /// </remarks>
     public static IPlatformPrinter? CreatePrinter() =>
 #if WINDOWS
         new Printendar.Printing.Windows.WindowsPrintService();
 #else
-        null;
+        Printendar.Printing.Cups.CupsPrintService.IsAvailable
+            ? new Printendar.Printing.Cups.CupsPrintService()
+            : null;
 #endif
 
     /// <summary>

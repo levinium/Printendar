@@ -50,6 +50,9 @@
   <ItemGroup>
     <ProjectReference Include="..\Printendar.Core\Printendar.Core.csproj" />
     <ProjectReference Include="..\Printendar.Sources.Ics\Printendar.Sources.Ics.csproj" />
+    <!-- Not conditional. CUPS is reached by running lp, which needs no platform framework, so
+         this compiles into every build and simply is not selected on Windows. -->
+    <ProjectReference Include="..\Printendar.Printing.Cups\Printendar.Printing.Cups.csproj" />
   </ItemGroup>
 
   <!-- Only the Windows build gets the printing shim. Everything else must not see it. -->
