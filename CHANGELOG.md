@@ -7,6 +7,27 @@ project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Added
+- Printing on macOS and Linux, through CUPS. Those platforms used to write a PDF and open it
+  in whatever viewer the desktop had, leaving that viewer's scale setting to decide the
+  result, which for a layout measured against the paper destroys the only guarantee the
+  program makes. Orientation is never passed, because the PDF is already landscape and
+  asking CUPS to rotate turns it twice; scaling is pinned at 100 and fit-to-page is off,
+  because some cups-filters builds fit unless told not to.
+- `Printendar.App.Tests`: the real window, opened headlessly on Windows, macOS and Linux in
+  CI. Until now nothing had ever opened the app anywhere but Windows.
+- `publish-mac.ps1`, which wraps the macOS build in a proper `.app` bundle with an icon.
+  It does not sign or notarize.
+
+### Fixed
+- Unticking a calendar did not survive a restart. Turning the only one off wrote an empty
+  list, and an empty list read back as "never chosen", which ticks the default again. Null
+  and empty are now different things: null is silence, empty is a decision.
+
+### Notes
+- No sheet has yet come out of a printer on macOS or Linux. The commands are pinned by tests;
+  the printing itself is unverified.
+
 ## [0.3.0]
 
 ### Removed
