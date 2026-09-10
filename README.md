@@ -1,3 +1,5 @@
+<img src="assets/printendar.svg" width="72" alt="">
+
 # Printendar
 
 **Print a calendar month on a single landscape sheet, the way classic Outlook could.**
@@ -14,7 +16,7 @@ one page instead of spilling onto two.
 
 ## Download
 
-**[Download Printendar-v0.2.0-win-x64.zip](https://github.com/levinium/Printendar/releases/download/v0.2.0/Printendar-v0.2.0-win-x64.zip)** (61 MB)
+**[Download Printendar-v0.3.0-win-x64.zip](https://github.com/levinium/Printendar/releases/download/v0.3.0/Printendar-v0.3.0-win-x64.zip)** (61 MB)
 
 Unzip it anywhere and run `Printendar.exe`. That is the whole installation. No setup step, no
 admin prompt, no registry entry: the .NET runtime it needs is inside the folder. Delete the
@@ -134,6 +136,10 @@ Early, and honest about it.
 PDF export, and reading `.ics` files and published `.ics` links. Printing has been confirmed
 on real hardware.
 
+The window follows your system's light or dark setting, and the gear in the top right can
+pin it to one or the other. That changes the window only: the printed page and the PDF are
+always black on white.
+
 **Not built yet:**
 
 - Printing on macOS and Linux. Those still hand the PDF to your system's viewer, because
@@ -144,6 +150,9 @@ on real hardware.
   spanning bar.
 - The window has only been run on Windows. The engine underneath is built and tested on
   Windows, macOS and Linux by CI, but nobody has opened the app itself on a Mac.
+- Nothing reminds you that a published link has gone stale at the publisher's end. Printendar
+  fetches the current copy before every print, but how current the publisher keeps that copy
+  is theirs to decide, and typically runs behind the live calendar.
 
 ## Before you print a lot of them
 
@@ -156,8 +165,8 @@ own unprintable margin near the edges, and only a real sheet tells you whether t
 Needs the .NET 10 SDK.
 
 ```powershell
-dotnet test          # 258 tests, all three platforms in CI
-./publish.ps1        # builds dist\Printendar-v0.2.0-win-x64.zip
+dotnet test          # 284 tests, all three platforms in CI
+./publish.ps1        # builds dist\Printendar-v0.3.0-win-x64.zip
 ```
 
 `publish.ps1` runs the tests first and refuses to publish if any fail.

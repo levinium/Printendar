@@ -41,10 +41,33 @@ public partial class MainWindow : Window
         this.FindControl<Button>("Print")!.Click += OnPrint;
         this.FindControl<Button>("AddLink")!.Click += OnAddLink;
         this.FindControl<Button>("AddFile")!.Click += OnAddFile;
+        this.FindControl<Button>("OpenSettings")!.Click += OnOpenSettings;
+
+        // Hidden rather than shown empty when the build carries no version. A label with
+        // nothing in it beside the settings button reads as something failing to load.
+        var version = this.FindControl<TextBlock>("VersionLabel")!;
+
+        version.Text = Core.AppVersion.Current is { } current ? $"v{current}" : string.Empty;
+        version.IsVisible = version.Text.Length > 0;
 
         // Loading opens every saved calendar, which for a feed means the network. Not awaited,
         // so the window appears at once and the calendars fill in as they answer.
         _ = model.LoadSettingsAsync();
+    }
+
+    private async void OnOpenSettings(object? sender, RoutedEventArgs e)
+    {
+        var settings = new SettingsWindow(_model.SettingsStore, _model.Settings);
+
+        await settings.ShowDialog(this);
+
+        if (settings.SettingsChanged)
+        {
+            // Re-read rather than trust what was passed in. The dialog writes the file, and the
+            // calendars are held here; taking its copy of the settings would be taking a copy
+            // made before anything else on this window had a chance to change them.
+            _model.ReloadSettings();
+        }
     }
 
     /// <summary>Opens the spectrum picker for a colour outside the eight offered.</summary>

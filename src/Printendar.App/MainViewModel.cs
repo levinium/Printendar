@@ -244,6 +244,20 @@ public sealed class MainViewModel : INotifyPropertyChanged
     /// <summary>Where settings are written, for the windows that change them.</summary>
     public SettingsStore SettingsStore => _settingsStore;
 
+    /// <summary>
+    /// Takes on settings a dialog has just written.
+    /// </summary>
+    /// <remarks>
+    /// Re-read from the file rather than handed back, so that whatever the dialog changed and
+    /// whatever the calendar list changed while it was open both survive. Passing the dialog's
+    /// copy back would quietly undo the second.
+    /// </remarks>
+    public void ReloadSettings()
+    {
+        _settings = _settingsStore.Load();
+        Sources.UpdateSettings(_settings);
+    }
+
     /// <summary>Loads saved settings and the calendars that were added last time.</summary>
     /// <remarks>
     /// Called once while the window is being built. The calendars are opened afterwards and

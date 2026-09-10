@@ -1,0 +1,71 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        x:Class="Printendar.App.SettingsWindow"
+        Title="Settings"
+        Icon="/Assets/printendar.ico"
+        Width="480" SizeToContent="Height"
+        CanResize="False"
+        WindowStartupLocation="CenterOwner">
+
+  <Window.Styles>
+    <Style Selector="TextBlock.heading">
+      <Setter Property="FontWeight" Value="SemiBold" />
+      <Setter Property="FontSize" Value="12" />
+      <Setter Property="Opacity" Value="0.75" />
+      <Setter Property="Margin" Value="0,0,0,8" />
+    </Style>
+    <Style Selector="TextBlock.note">
+      <Setter Property="FontSize" Value="11" />
+      <Setter Property="Opacity" Value="0.65" />
+      <Setter Property="TextWrapping" Value="Wrap" />
+    </Style>
+  </Window.Styles>
+
+  <DockPanel Margin="18">
+
+    <Border DockPanel.Dock="Bottom" Margin="0,18,0,0">
+      <Button Name="CloseButton" Content="Done" Width="90" Classes="accent"
+              HorizontalAlignment="Right" />
+    </Border>
+
+    <StackPanel Spacing="18">
+
+      <StackPanel>
+        <TextBlock Classes="heading" Text="APPEARANCE" />
+
+        <!-- Applied the moment it is chosen rather than on Done. A colour scheme is judged by
+             looking at it, so making somebody commit before they can see it turns one decision
+             into three. -->
+        <StackPanel Spacing="4">
+          <RadioButton Name="ThemeSystem" GroupName="Theme" Content="Use the system setting" />
+          <RadioButton Name="ThemeLight" GroupName="Theme" Content="Light" />
+          <RadioButton Name="ThemeDark" GroupName="Theme" Content="Dark" />
+        </StackPanel>
+
+        <TextBlock Classes="note" Margin="0,8,0,0"
+                   Text="This changes the window only. The printed page and the PDF are always black on white, whichever you pick." />
+      </StackPanel>
+
+      <Border Height="1" Background="{DynamicResource CardBorder}" />
+
+      <StackPanel>
+        <TextBlock Classes="heading" Text="ABOUT" />
+
+        <Grid ColumnDefinitions="Auto,*" RowDefinitions="Auto,Auto" >
+          <TextBlock Grid.Row="0" Grid.Column="0" Text="Version" Classes="note" Margin="0,0,12,4" />
+          <TextBlock Grid.Row="0" Grid.Column="1" Name="VersionValue" FontSize="11" Margin="0,0,0,4" />
+
+          <TextBlock Grid.Row="1" Grid.Column="0" Text="Settings file" Classes="note" Margin="0,0,12,0" />
+          <TextBlock Grid.Row="1" Grid.Column="1" Name="SettingsPath" FontSize="11"
+                     TextWrapping="Wrap" />
+        </Grid>
+
+        <Button Name="OpenRepository" Content="Printendar on GitHub"
+                Margin="0,12,0,0" Padding="0" Background="Transparent" BorderThickness="0"
+                FontSize="11" Foreground="{DynamicResource SystemAccentColor}"
+                HorizontalAlignment="Left" />
+      </StackPanel>
+
+    </StackPanel>
+  </DockPanel>
+</Window>

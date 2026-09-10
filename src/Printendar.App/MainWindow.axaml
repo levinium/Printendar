@@ -22,6 +22,7 @@
     <StreamGeometry x:Key="IconRefresh">M12 6V3L8 7l4 4V8c2.76 0 5 2.24 5 5 0 .84-.21 1.63-.58 2.32l1.46 1.46A6.94 6.94 0 0 0 19 13c0-3.87-3.13-7-7-7zm0 12c-2.76 0-5-2.24-5-5 0-.84.21-1.63.58-2.32L6.12 9.22A6.94 6.94 0 0 0 5 13c0 3.87 3.13 7 7 7v3l4-4-4-4v3z</StreamGeometry>
     <StreamGeometry x:Key="IconTrash">M6 19a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z</StreamGeometry>
     <StreamGeometry x:Key="IconPlus">M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z</StreamGeometry>
+    <StreamGeometry x:Key="IconGear">M19.14 12.94c.04-.3.06-.61.06-.94 0-.32-.02-.64-.07-.94l2.03-1.58a.49.49 0 0 0 .12-.61l-1.92-3.32a.49.49 0 0 0-.59-.22l-2.39.96a7.03 7.03 0 0 0-1.62-.94l-.36-2.54a.48.48 0 0 0-.48-.41h-3.84a.48.48 0 0 0-.47.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96a.48.48 0 0 0-.59.22L2.74 8.87a.49.49 0 0 0 .12.61l2.03 1.58c-.05.3-.09.63-.09.94s.02.64.07.94l-2.03 1.58a.49.49 0 0 0-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32c.12-.22.07-.47-.12-.61l-2.01-1.58zM12 15.6A3.6 3.6 0 0 1 8.4 12 3.6 3.6 0 0 1 12 8.4a3.6 3.6 0 0 1 3.6 3.6 3.6 3.6 0 0 1-3.6 3.6z</StreamGeometry>
   </Window.Resources>
 
   <Window.Styles>
@@ -113,8 +114,8 @@
 
     <!-- The everyday controls sit on the top bar. Everything a person needs to print this
          month and no more: pick a month, print it. The rest is refinement in the panel. -->
-    <Border DockPanel.Dock="Top" Padding="12,10" Background="{DynamicResource SystemChromeLowColor}">
-      <Grid ColumnDefinitions="Auto,Auto,Auto,*,Auto,Auto">
+    <Border DockPanel.Dock="Top" Padding="12,10" Background="{DynamicResource PanelBackground}">
+      <Grid ColumnDefinitions="Auto,Auto,Auto,*,Auto,Auto,Auto,Auto">
         <Button Grid.Column="0" Name="PreviousMonth" Content="&#x2039;" Width="36" ToolTip.Tip="Previous month" />
         <Button Grid.Column="1" Name="NextMonth" Content="&#x203A;" Width="36" Margin="4,0,0,0" ToolTip.Tip="Next month" />
         <TextBlock Grid.Column="2"
@@ -123,11 +124,23 @@
                    VerticalAlignment="Center" Margin="16,0,0,0" />
         <Button Grid.Column="4" Name="SavePdf" Content="Save as PDF" Margin="0,0,8,0" />
         <Button Grid.Column="5" Name="Print" Content="Print" Classes="accent" />
+
+        <!-- Which build this is, where somebody can read it out without going looking. Small
+             and quiet: it is worth nothing until the moment somebody is filing a bug, and
+             then it is the first thing anybody asks for. -->
+        <TextBlock Grid.Column="6" Name="VersionLabel"
+                   VerticalAlignment="Center" Margin="16,0,0,0"
+                   FontSize="11" Opacity="0.5" />
+
+        <Button Grid.Column="7" Name="OpenSettings" Classes="rowaction"
+                Margin="8,0,0,0" ToolTip.Tip="Settings">
+          <Path Data="{StaticResource IconGear}" Classes="rowicon" />
+        </Button>
       </Grid>
     </Border>
 
     <!-- What the layout had to do to make it fit, in words, with the lever to pull. -->
-    <Border DockPanel.Dock="Bottom" Padding="12,8" Background="{DynamicResource SystemChromeLowColor}">
+    <Border DockPanel.Dock="Bottom" Padding="12,8" Background="{DynamicResource PanelBackground}">
       <TextBlock Text="{Binding Status}" TextWrapping="Wrap" Opacity="0.85" />
     </Border>
 

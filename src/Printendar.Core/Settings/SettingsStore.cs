@@ -13,6 +13,9 @@ public sealed record AppSettings
 {
     /// <summary>The calendars the user has added.</summary>
     public IReadOnlyList<ConfiguredSource> Sources { get; init; } = [];
+
+    /// <summary>Which colour scheme the window uses.</summary>
+    public AppTheme Theme { get; init; } = AppTheme.System;
 }
 
 /// <summary>Where the settings file lives.</summary>
