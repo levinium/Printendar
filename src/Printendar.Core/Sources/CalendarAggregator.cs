@@ -93,7 +93,7 @@ public static class CalendarAggregator
         }
         catch (Exception ex)
         {
-            // Deliberately broad. Every provider fails in its own vocabulary (HTTP, MSAL, IO,
+            // Deliberately broad. Every provider fails in its own vocabulary (HTTP, IO,
             // malformed iCalendar), and the point here is that none of them can take down a
             // page that three other calendars would have printed fine.
             return ([], new SourceFailure(

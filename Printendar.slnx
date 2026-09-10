@@ -3,7 +3,6 @@
     <Project Path="src/Printendar.Core/Printendar.Core.csproj" />
     <Project Path="src/Printendar.Cli/Printendar.Cli.csproj" />
     <Project Path="src/Printendar.App/Printendar.App.csproj" />
-    <Project Path="src/Printendar.Sources.Microsoft365/Printendar.Sources.Microsoft365.csproj" />
     <Project Path="src/Printendar.Printing.Windows/Printendar.Printing.Windows.csproj" />
     <Project Path="src/Printendar.Sources.Ics/Printendar.Sources.Ics.csproj" />
   </Folder>

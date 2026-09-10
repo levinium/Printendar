@@ -14,7 +14,6 @@ using Printendar.Core.Settings;
 using Printendar.Core.Sources;
 using Printendar.Core.Text;
 using Printendar.Sources.Ics;
-using Printendar.Sources.Microsoft365;
 
 namespace Printendar.App;
 
@@ -231,101 +230,19 @@ public sealed class MainViewModel : INotifyPropertyChanged
     /// </summary>
     /// <remarks>
     /// Its own object rather than more properties here. This class already carries the page,
-    /// the paper, the fit policy and the Microsoft setup; account management is a separate
+    /// the paper and the fit policy; managing which calendars are printed is a separate
     /// concern with its own persistence and its own window.
     /// </remarks>
     public CalendarSourcesViewModel Sources { get; private set; }
 
-    // ------------------------------------------------------------------ Microsoft setup
-
     private readonly SettingsStore _settingsStore = new(new DesktopSettingsLocation());
     private AppSettings _settings = new();
-    private bool _showMicrosoftSetup;
 
     /// <summary>What is saved right now, for windows that need to read it.</summary>
     public AppSettings Settings => _settings;
 
-    /// <summary>The registration sign-in will use, given what is saved right now.</summary>
-    public Microsoft365Options MicrosoftOptions => Microsoft365Options.Resolve(_settings);
-
-    /// <summary>
-    /// Whether a Microsoft application id is available.
-    /// </summary>
-    /// <remarks>
-    /// Read from the resolved options rather than fixed at construction, so entering an id in
-    /// the window enables the button immediately instead of after a restart.
-    /// </remarks>
-    public bool IsMicrosoftConfigured => MicrosoftOptions.IsConfigured;
-
-    public bool IsMicrosoftNotConfigured => !IsMicrosoftConfigured;
-
-    /// <summary>Whether the "use our own registration" panel is open.</summary>
-    public bool ShowMicrosoftSetup
-    {
-        get => _showMicrosoftSetup;
-        set
-        {
-            _showMicrosoftSetup = value;
-            Raise(nameof(ShowMicrosoftSetup));
-        }
-    }
-
-    /// <summary>An organisation's own application id, as typed into the window.</summary>
-    public string? MicrosoftClientId
-    {
-        get => _settings.MicrosoftClientId;
-        set
-        {
-            _settings = _settings with { MicrosoftClientId = value };
-            Raise(nameof(MicrosoftClientId));
-        }
-    }
-
-    public string? MicrosoftTenant
-    {
-        get => _settings.MicrosoftTenant;
-        set
-        {
-            _settings = _settings with { MicrosoftTenant = value };
-            Raise(nameof(MicrosoftTenant));
-        }
-    }
-
-    /// <summary>Where an administrator approves the registration currently in use.</summary>
-    public string MicrosoftAdminConsentUrl =>
-        MicrosoftOptions.IsConfigured
-            ? Microsoft365Diagnostics.BuildAdminConsentUrl(MicrosoftOptions.ClientId)
-            : string.Empty;
-
-    /// <summary>Where an administrator creates a registration, if they want their own.</summary>
-    public static string PortalNewRegistrationUrl => Microsoft365Options.PortalNewRegistrationUrl;
-
-    /// <summary>The exact settings a new registration needs, shown so nothing is guessed at.</summary>
-    public static string RegistrationRecipe =>
-        "Name: anything, for example Printendar\n" +
-        "Supported account types: accounts in any organizational directory and personal Microsoft accounts\n" +
-        "Redirect URI: Public client/native (mobile & desktop) -> http://localhost\n" +
-        "API permissions, delegated: User.Read, Calendars.Read, Calendars.Read.Shared\n" +
-        "No client secret. Printendar is a public client and holds none.";
-
-    /// <summary>Saves the entered registration and reports what it means.</summary>
-    public void SaveMicrosoftRegistration()
-    {
-        _settingsStore.Save(_settings);
-        _settings = _settingsStore.Load();
-
-        Raise(nameof(MicrosoftClientId));
-        Raise(nameof(MicrosoftTenant));
-        Raise(nameof(IsMicrosoftConfigured));
-        Raise(nameof(IsMicrosoftNotConfigured));
-        Raise(nameof(MicrosoftAdminConsentUrl));
-
-        Status = IsMicrosoftConfigured
-            ? "Saved. Click Connect Microsoft 365 to sign in."
-            : "Cleared. Printendar will use its own registration, if this build has one.";
-
-        ShowMicrosoftSetup = false;
-    }
+    /// <summary>Where settings are written, for the windows that change them.</summary>
+    public SettingsStore SettingsStore => _settingsStore;
 
     /// <summary>Loads saved settings and the calendars that were added last time.</summary>
     /// <remarks>
@@ -336,12 +253,6 @@ public sealed class MainViewModel : INotifyPropertyChanged
     public async Task LoadSettingsAsync()
     {
         _settings = _settingsStore.Load();
-
-        Raise(nameof(MicrosoftClientId));
-        Raise(nameof(MicrosoftTenant));
-        Raise(nameof(IsMicrosoftConfigured));
-        Raise(nameof(IsMicrosoftNotConfigured));
-        Raise(nameof(MicrosoftAdminConsentUrl));
 
         Sources = new CalendarSourcesViewModel(_settingsStore, _settings);
         Sources.Changed += (_, _) =>
@@ -377,32 +288,43 @@ public sealed class MainViewModel : INotifyPropertyChanged
     /// </remarks>
     public bool HasNoSources => Sources.HasNoSources;
 
-    private string? _adminConsentUrl;
-
     /// <summary>
-    /// Where an administrator approves Printendar for the whole organisation, when that is
-    /// what is standing in the way.
+    /// Re-reads every calendar, so that what is about to be printed is what they say now.
     /// </summary>
     /// <remarks>
-    /// Only set when the identity platform actually said an administrator is needed. Offering
-    /// the link speculatively would send people to a page most of them do not need and cannot
-    /// use.
+    /// The page on screen was laid out whenever the month last changed, which may have been
+    /// this morning. Printing it would put a meeting added since onto no sheet at all, and the
+    /// failure would look like the calendar being wrong rather than like the app showing an
+    /// old copy of it. Paper cannot be corrected afterwards, so this runs before the printer
+    /// dialog rather than after.
+    ///
+    /// It refreshes rather than verifies: there is no way to ask a published feed whether it
+    /// changed that is cheaper than reading it, and a feed is a few tens of kilobytes.
+    ///
+    /// A feed that cannot be reached does not stop the print. Its reason is already against
+    /// its own name in the list, the warning before printing says how many are missing, and
+    /// refusing to print the calendars that do work would be worked around rather than heeded.
     /// </remarks>
-    public string? AdminConsentUrl
+    public async Task RefreshBeforePrintingAsync(CancellationToken cancellationToken = default)
     {
-        get => _adminConsentUrl;
-        private set
+        var wasSaying = Status;
+
+        Status = "Checking calendars for changes…";
+
+        try
         {
-            _adminConsentUrl = value;
-            Raise(nameof(AdminConsentUrl));
-            Raise(nameof(NeedsAdminConsent));
+            await RefreshEventsAsync(cancellationToken).ConfigureAwait(true);
+        }
+        finally
+        {
+            // Only if the refresh had nothing of its own to report. Its message names the
+            // calendars that failed, which matters more than whatever was there before.
+            if (Status == "Checking calendars for changes…")
+            {
+                Status = wasSaying;
+            }
         }
     }
-
-    public bool NeedsAdminConsent => _adminConsentUrl is not null;
-
-    /// <summary>Clears the administrator prompt, after they have been sent to approve it.</summary>
-    public void ClearAdminConsentPrompt() => AdminConsentUrl = null;
 
     /// <summary>
     /// Fetches the visible month from every calendar that is ticked.

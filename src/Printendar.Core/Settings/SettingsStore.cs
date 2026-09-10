@@ -5,22 +5,12 @@ using System.Text.Json.Serialization;
 namespace Printendar.Core.Settings;
 
 /// <summary>What Printendar remembers between runs.</summary>
-/// <param name="MicrosoftClientId">
-/// An organisation's own Entra application id, when they would rather not consent to
-/// Printendar's. Not a secret: a public client application's id is public by design.
-/// </param>
-/// <param name="MicrosoftTenant">
-/// The organisation to sign in to, when it should not be "common". Rarely needed.
-/// </param>
+/// <remarks>
+/// Only the calendars. There is nothing else to keep: Printendar signs in to nothing, so it
+/// holds no application id, no tenant and no token, and this file is never worth stealing.
+/// </remarks>
 public sealed record AppSettings
 {
-    public string? MicrosoftClientId { get; init; }
-
-    public string? MicrosoftTenant { get; init; }
-
-    /// <summary>A Google OAuth client id, for the same bring-your-own reason as Microsoft's.</summary>
-    public string? GoogleClientId { get; init; }
-
     /// <summary>The calendars the user has added.</summary>
     public IReadOnlyList<ConfiguredSource> Sources { get; init; } = [];
 }
@@ -103,23 +93,20 @@ public sealed class SettingsStore(ISettingsLocation location)
         }
     }
 
-    /// <summary>Treats blank text as absent, so a cleared box reads back as "not configured".</summary>
+    /// <summary>Drops sources this build cannot read, and keeps everything else.</summary>
     /// <remarks>
-    /// Also drops sources that cannot be used. A settings file written by a newer version can
-    /// name a source kind this build has never heard of, which deserializes to the enum's
-    /// default; letting that through would make an unknown future calendar masquerade as a
-    /// Microsoft account. Dropping it means an older build still starts.
+    /// A settings file can name a source kind this build has never heard of: one written by a
+    /// newer version, or by an older one back when Printendar signed in to Microsoft 365 and
+    /// Google accounts directly. Either deserializes to the enum's default, and letting that
+    /// through would make it masquerade as a calendar that can be read.
+    ///
+    /// Dropping the entry rather than refusing the file is the whole point. Someone who used
+    /// an account keeps the feeds, names and colours they also had.
     /// </remarks>
     private static AppSettings Normalize(AppSettings settings) => settings with
     {
-        MicrosoftClientId = Trimmed(settings.MicrosoftClientId),
-        MicrosoftTenant = Trimmed(settings.MicrosoftTenant),
-        GoogleClientId = Trimmed(settings.GoogleClientId),
         Sources = [.. (settings.Sources ?? []).Where(s => s is { IsUsable: true })],
     };
-
-    private static string? Trimmed(string? value) =>
-        string.IsNullOrWhiteSpace(value) ? null : value.Trim();
 
     private void QuarantineBrokenFile()
     {

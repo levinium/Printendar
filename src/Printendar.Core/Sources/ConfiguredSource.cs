@@ -8,26 +8,25 @@ namespace Printendar.Core.Sources;
 public enum CalendarSourceKind
 {
     /// <summary>
-    /// A kind this build does not recognise, from a settings file written by a newer version.
+    /// A kind this build does not recognise, from a settings file written by another version.
     /// </summary>
     /// <remarks>
     /// Explicit and zero so that an unreadable value lands here rather than silently becoming
-    /// the first real member. Without it a future "Exchange" source would come back as a
-    /// Microsoft 365 account and be acted on.
+    /// the first real member, and so that an entry landing here is dropped rather than acted
+    /// on as something it is not.
+    ///
+    /// Earlier versions signed in to Microsoft 365 and Google directly and wrote those kinds
+    /// here. Both are gone, so those entries now land on Unknown and are dropped, which is
+    /// what the numbers below are for: they are pinned rather than implied, so removing a
+    /// member cannot silently renumber the survivors and turn a saved feed into a file.
     /// </remarks>
     Unknown = 0,
 
-    /// <summary>A work, school or personal Microsoft account.</summary>
-    Microsoft365,
-
-    /// <summary>A Google account.</summary>
-    Google,
-
     /// <summary>An iCalendar file on this computer.</summary>
-    IcsFile,
+    IcsFile = 3,
 
-    /// <summary>A published iCalendar feed, re-read each time.</summary>
-    IcsUrl,
+    /// <summary>A published iCalendar feed, re-read every time it is printed.</summary>
+    IcsUrl = 4,
 }
 
 /// <summary>
@@ -67,17 +66,19 @@ public sealed class CalendarSourceKindConverter : JsonConverter<CalendarSourceKi
 /// </summary>
 /// <param name="Id">Printendar's own identifier. Addresses this source everywhere else.</param>
 /// <param name="DisplayName">What the user calls it, and can rename.</param>
-/// <param name="Location">A file path or feed URL. Null for the account-based kinds.</param>
+/// <param name="Location">The file path or the feed address. Every kind has one.</param>
 /// <param name="AccountId">
-/// The provider's identifier for the signed-in account, so several accounts of the same kind
-/// stay apart. For Microsoft this is the MSAL home account id.
+/// The provider's identifier for an account, kept so that entries written by an older version
+/// can still be told apart. Nothing sets it now.
 /// </param>
 /// <remarks>
-/// Deliberately thin, and deliberately holds no credential. Microsoft tokens live in MSAL's
-/// own platform-encrypted cache (DPAPI, Keychain, libsecret) and only the account identifier is
-/// written here, so this file is never worth stealing. A test asserts the record has no field
-/// whose name suggests otherwise, which is what makes that a property of the type rather than
-/// a habit.
+/// Deliberately thin, and deliberately holds no credential. There is nothing to hold: a
+/// published feed address is itself the only secret involved, and a test asserts the record
+/// has no field whose name suggests otherwise, which makes that a property of the type rather
+/// than a habit.
+///
+/// A published address is worth treating as a password even so. Anyone holding it can read
+/// that calendar, which is why the window says so when one is added.
 /// </remarks>
 public sealed record ConfiguredSource(
     string Id,
@@ -110,8 +111,10 @@ public sealed record ConfiguredSource(
 
     /// <summary>Whether this entry is usable, as opposed to something a file edit produced.</summary>
     /// <remarks>
-    /// The id addresses the source everywhere else, so a blank one is not a source. Location is
-    /// required for the kinds that have nowhere else to look.
+    /// The id addresses the source everywhere else, so a blank one is not a source. Every
+    /// remaining kind reads from a location, so an entry without one has nowhere to look:
+    /// that is what a source left behind by a version that signed in to an account looks
+    /// like, and it is dropped rather than carried forward broken.
     ///
     /// Kept out of the file because it is derived from the fields above rather than chosen.
     /// Written out it would read as a switch, and someone editing the settings to disable a
@@ -122,6 +125,5 @@ public sealed record ConfiguredSource(
         !string.IsNullOrWhiteSpace(Id) &&
         !string.IsNullOrWhiteSpace(DisplayName) &&
         Kind is not CalendarSourceKind.Unknown &&
-        (Kind is not (CalendarSourceKind.IcsFile or CalendarSourceKind.IcsUrl) ||
-         !string.IsNullOrWhiteSpace(Location));
+        !string.IsNullOrWhiteSpace(Location);
 }

@@ -7,10 +7,61 @@
         x:Class="Printendar.App.MainWindow"
         x:DataType="vm:MainViewModel"
         Title="Printendar"
+        Icon="/Assets/printendar.ico"
         Width="1280" Height="860"
         MinWidth="900" MinHeight="600">
 
+  <Window.Resources>
+    <!--
+      Drawn rather than typed. The pencil, the arrows and the bin exist as characters, but
+      those come from whatever font the system decides to substitute, which means three icons
+      at three weights and, on some machines, a colour emoji bin among two monochrome glyphs.
+      Geometry is the same everywhere and inherits the theme's foreground like everything else.
+    -->
+    <StreamGeometry x:Key="IconPencil">M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04a1 1 0 0 0 0-1.41l-2.34-2.34a1 1 0 0 0-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z</StreamGeometry>
+    <StreamGeometry x:Key="IconRefresh">M12 6V3L8 7l4 4V8c2.76 0 5 2.24 5 5 0 .84-.21 1.63-.58 2.32l1.46 1.46A6.94 6.94 0 0 0 19 13c0-3.87-3.13-7-7-7zm0 12c-2.76 0-5-2.24-5-5 0-.84.21-1.63.58-2.32L6.12 9.22A6.94 6.94 0 0 0 5 13c0 3.87 3.13 7 7 7v3l4-4-4-4v3z</StreamGeometry>
+    <StreamGeometry x:Key="IconTrash">M6 19a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z</StreamGeometry>
+    <StreamGeometry x:Key="IconPlus">M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z</StreamGeometry>
+  </Window.Resources>
+
   <Window.Styles>
+    <!--
+      Quiet until wanted. Three buttons on every card would otherwise out-shout the calendar
+      names they belong to, and the list is read on every print while these are pressed once
+      in a while.
+    -->
+    <Style Selector="Button.rowaction">
+      <Setter Property="Width" Value="26" />
+      <Setter Property="Height" Value="24" />
+      <Setter Property="MinWidth" Value="0" />
+      <Setter Property="Padding" Value="0" />
+      <Setter Property="Background" Value="Transparent" />
+      <Setter Property="BorderThickness" Value="0" />
+      <Setter Property="CornerRadius" Value="3" />
+      <Setter Property="Opacity" Value="0.5" />
+      <Setter Property="HorizontalContentAlignment" Value="Center" />
+      <Setter Property="VerticalContentAlignment" Value="Center" />
+    </Style>
+
+    <Style Selector="Button.rowaction:pointerover">
+      <Setter Property="Opacity" Value="1" />
+    </Style>
+
+    <!-- Removing is the one action here that cannot be undone, so it is the one that changes
+         colour rather than just brightening. -->
+    <Style Selector="Button.rowaction.danger:pointerover Path.rowicon">
+      <Setter Property="Fill" Value="#C42B2B" />
+    </Style>
+
+    <Style Selector="Path.rowicon">
+      <Setter Property="Fill" Value="{DynamicResource SystemControlForegroundBaseHighBrush}" />
+      <Setter Property="Width" Value="14" />
+      <Setter Property="Height" Value="14" />
+      <Setter Property="Stretch" Value="Uniform" />
+      <Setter Property="HorizontalAlignment" Value="Center" />
+      <Setter Property="VerticalAlignment" Value="Center" />
+    </Style>
+
     <Style Selector="TextBlock.sectionHeading">
       <Setter Property="FontWeight" Value="SemiBold" />
       <Setter Property="Margin" Value="0,14,0,4" />
@@ -104,69 +155,128 @@
              panel is read every time. -->
         <ItemsControl ItemsSource="{Binding Sources.Sources}">
           <ItemsControl.ItemTemplate>
+            <!-- One row per calendar, not a source with a list nested under it. Every source
+                 Printendar can read is a single iCalendar, so the nested list only ever held
+                 one item, and it carried the same name as the heading above it: every calendar
+                 was drawn twice, once as a title and once as its own only child. -->
             <DataTemplate x:DataType="src:SourceEntry">
-              <StackPanel Margin="0,0,0,12">
-                <TextBlock Text="{Binding DisplayName}" FontWeight="SemiBold"
-                           TextTrimming="CharacterEllipsis" />
-                <TextBlock Text="{Binding KindLabel}" FontSize="10" Opacity="0.55" />
 
-                <!-- Against the source rather than in the status bar: with four calendars
-                     connected, "could not be read" does not say which one to go and fix. -->
+              <!-- A card each, matching the manage window's list so the two read as the same
+                   set of things. Spacing alone stopped being enough once a row could carry a
+                   name, a kind and a wrapped error: three lines of one calendar and one line
+                   of the next ran together, and the error looked like it belonged to whichever
+                   name your eye landed on. -->
+              <Border Margin="0,0,0,6" Padding="9,8" CornerRadius="4"
+                      Background="{DynamicResource CardBackground}"
+                      BorderBrush="{DynamicResource CardBorder}" BorderThickness="1">
+              <StackPanel>
+
+                <!-- Two columns, not one row of controls. The tick and the swatch do unrelated
+                     jobs, and side by side a click aimed at one landed on the other often
+                     enough to matter: whether a calendar prints at all, and what colour it
+                     prints in, should not be a pixel apart. The names now line up hard left
+                     and the colours hard right, so the list also reads as a legend. -->
+                <Grid ColumnDefinitions="*,Auto">
+
+                  <!-- The swatch shows the printed colour, so it is the obvious thing to click
+                       to change it: no new screen, and it is in front of you at the moment two
+                       calendars look alike. Hidden until the calendar has been read, because
+                       until then there is no colour to show and nothing to change. -->
+                  <Button Grid.Column="1" Classes="swatch" Background="{Binding Calendar.Swatch}"
+                          IsVisible="{Binding HasCalendar}"
+                          Margin="8,0,0,0" VerticalAlignment="Center"
+                          ToolTip.Tip="Change the colour this calendar prints in">
+                    <Button.Flyout>
+                      <Flyout Placement="Bottom">
+                        <StackPanel Spacing="8">
+                          <TextBlock Text="PRINTS IN" FontWeight="SemiBold" FontSize="11"
+                                     Opacity="0.75" />
+                          <ItemsControl ItemsSource="{Binding Calendar.Choices}">
+                            <ItemsControl.ItemsPanel>
+                              <ItemsPanelTemplate>
+                                <WrapPanel MaxWidth="152" />
+                              </ItemsPanelTemplate>
+                            </ItemsControl.ItemsPanel>
+                            <ItemsControl.ItemTemplate>
+                              <DataTemplate x:DataType="vm:CalendarColorChoice">
+                                <Button Classes="colorchoice"
+                                        Background="{Binding Swatch}"
+                                        Command="{Binding Choose}">
+                                  <TextBlock Text="✓" IsVisible="{Binding IsCurrent}"
+                                             Foreground="White" FontWeight="Bold"
+                                             HorizontalAlignment="Center"
+                                             VerticalAlignment="Center" />
+                                </Button>
+                              </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                          </ItemsControl>
+                          <Button Content="Custom…" HorizontalAlignment="Stretch"
+                                  HorizontalContentAlignment="Center"
+                                  Click="OnCustomColor" />
+                        </StackPanel>
+                      </Flyout>
+                    </Button.Flyout>
+                  </Button>
+
+                  <!-- The name sits inside the tick so that clicking either one works, which
+                       is what people expect of a list of things to include. The plain version
+                       below is for a calendar that has not been read yet, or could not be:
+                       there is nothing to tick, but it still has to be identifiable. -->
+                  <CheckBox Grid.Column="0" IsChecked="{Binding Calendar.IsSelected}"
+                            IsVisible="{Binding HasCalendar}"
+                            VerticalAlignment="Center">
+                    <TextBlock Text="{Binding DisplayName}" FontWeight="SemiBold"
+                               IsVisible="{Binding IsNotEditingName}"
+                               TextTrimming="CharacterEllipsis" />
+                  </CheckBox>
+
+                  <TextBlock Grid.Column="0" Text="{Binding DisplayName}" FontWeight="SemiBold"
+                             IsVisible="{Binding HasNoCalendar}"
+                             VerticalAlignment="Center"
+                             TextTrimming="CharacterEllipsis" />
+                </Grid>
+
+                <!-- Two controls rather than one box styled to look like both. Off, the name
+                     is plainly text; on, it is an ordinary text field with the border the
+                     theme gives every other one, so which state you are in is never in doubt.
+                     It sits outside the tick because a text box inside a checkbox swallows
+                     the space bar. -->
+                <TextBox Name="NameBox" Text="{Binding EditableName}"
+                         IsVisible="{Binding IsEditingName}"
+                         FontWeight="SemiBold" Margin="0,2,0,0"
+                         KeyDown="OnNameKeyDown" />
+
+                <!-- The kind and the buttons share a line. The kind says whether this calendar
+                     keeps itself up to date: a link is re-read before every print, a file is
+                     whatever was exported. -->
+                <Grid ColumnDefinitions="*,Auto" Margin="28,2,0,0">
+                  <TextBlock Grid.Column="0" Text="{Binding KindLabel}" FontSize="10"
+                             Opacity="0.55" VerticalAlignment="Center" />
+
+                  <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="1">
+                    <Button Name="RenameButton" Classes="rowaction" Click="OnToggleRename"
+                            ToolTip.Tip="Rename this calendar">
+                      <Path Data="{StaticResource IconPencil}" Classes="rowicon" />
+                    </Button>
+                    <Button Classes="rowaction" Click="OnRefreshOne"
+                            ToolTip.Tip="Read this calendar again now">
+                      <Path Data="{StaticResource IconRefresh}" Classes="rowicon" />
+                    </Button>
+                    <Button Classes="rowaction danger" Click="OnRemoveOne"
+                            ToolTip.Tip="Remove this calendar">
+                      <Path Data="{StaticResource IconTrash}" Classes="rowicon" />
+                    </Button>
+                  </StackPanel>
+                </Grid>
+
+                <!-- Against the calendar rather than in the status bar: with four of them
+                     added, "could not be read" does not say which one to go and fix. -->
                 <TextBlock Text="{Binding Error}"
                            IsVisible="{Binding HasError}"
                            FontSize="10" Foreground="#a30000"
-                           TextWrapping="Wrap" Margin="0,2,0,0" />
-
-                <ItemsControl ItemsSource="{Binding Calendars}" Margin="8,4,0,0">
-                  <ItemsControl.ItemTemplate>
-                    <DataTemplate x:DataType="vm:SelectableCalendar">
-                      <StackPanel Orientation="Horizontal" Spacing="4" Margin="0,0,0,2">
-
-                        <!-- The swatch was already here showing the printed colour, so it is
-                             the obvious thing to click to change it: no new screen, and it is
-                             in front of you at the moment two calendars look alike. -->
-                        <Button Classes="swatch" Background="{Binding Swatch}"
-                                ToolTip.Tip="Change the colour this calendar prints in">
-                          <Button.Flyout>
-                            <Flyout Placement="Bottom">
-                              <StackPanel Spacing="8">
-                                <TextBlock Text="PRINTS IN" FontWeight="SemiBold" FontSize="11"
-                                           Opacity="0.75" />
-                                <ItemsControl ItemsSource="{Binding Choices}">
-                                  <ItemsControl.ItemsPanel>
-                                    <ItemsPanelTemplate>
-                                      <WrapPanel MaxWidth="152" />
-                                    </ItemsPanelTemplate>
-                                  </ItemsControl.ItemsPanel>
-                                  <ItemsControl.ItemTemplate>
-                                    <DataTemplate x:DataType="vm:CalendarColorChoice">
-                                      <Button Classes="colorchoice"
-                                              Background="{Binding Swatch}"
-                                              Command="{Binding Choose}">
-                                        <TextBlock Text="✓" IsVisible="{Binding IsCurrent}"
-                                                   Foreground="White" FontWeight="Bold"
-                                                   HorizontalAlignment="Center"
-                                                   VerticalAlignment="Center" />
-                                      </Button>
-                                    </DataTemplate>
-                                  </ItemsControl.ItemTemplate>
-                                </ItemsControl>
-                                <Button Content="Custom…" HorizontalAlignment="Stretch"
-                                        HorizontalContentAlignment="Center"
-                                        Click="OnCustomColor" />
-                              </StackPanel>
-                            </Flyout>
-                          </Button.Flyout>
-                        </Button>
-
-                        <CheckBox IsChecked="{Binding IsSelected}" VerticalAlignment="Center">
-                          <TextBlock Text="{Binding DisplayName}" TextTrimming="CharacterEllipsis" />
-                        </CheckBox>
-                      </StackPanel>
-                    </DataTemplate>
-                  </ItemsControl.ItemTemplate>
-                </ItemsControl>
+                           TextWrapping="Wrap" Margin="28,2,0,0" />
               </StackPanel>
+              </Border>
             </DataTemplate>
           </ItemsControl.ItemTemplate>
         </ItemsControl>
@@ -175,10 +285,40 @@
                    IsVisible="{Binding HasNoSources}"
                    Text="Showing a sample month. Add a calendar to print your own. Printendar only ever reads your calendars." />
 
-        <Button Name="ManageCalendars"
-                Content="Add or manage calendars…"
+        <!-- A flyout rather than two buttons or a second window. There are exactly two ways a
+             calendar gets in, and which one you want is a question with two answers, not a
+             screen. Everything a calendar needs afterwards now lives on its own card. -->
+        <Button Name="AddCalendar"
                 HorizontalAlignment="Stretch"
-                Margin="0,4,0,0" />
+                HorizontalContentAlignment="Center"
+                Margin="0,4,0,0">
+          <StackPanel Orientation="Horizontal" Spacing="6">
+            <Path Data="{StaticResource IconPlus}" Classes="rowicon" />
+            <TextBlock Text="Add calendar" />
+          </StackPanel>
+          <Button.Flyout>
+            <Flyout Placement="Bottom">
+              <StackPanel Spacing="4" MinWidth="250">
+                <Button Name="AddLink" HorizontalAlignment="Stretch"
+                        HorizontalContentAlignment="Left" Padding="10,8">
+                  <StackPanel Spacing="1">
+                    <TextBlock Text="Calendar link" FontWeight="SemiBold" />
+                    <TextBlock Text="Re-read before every print" FontSize="11" Opacity="0.65" />
+                  </StackPanel>
+                </Button>
+                <Button Name="AddFile" HorizontalAlignment="Stretch"
+                        HorizontalContentAlignment="Left" Padding="10,8">
+                  <StackPanel Spacing="1">
+                    <TextBlock Text="Calendar file (.ics)" FontWeight="SemiBold" />
+                    <TextBlock Text="A snapshot, until you export again" FontSize="11" Opacity="0.65" />
+                  </StackPanel>
+                </Button>
+              </StackPanel>
+            </Flyout>
+          </Button.Flyout>
+        </Button>
+
+        <TextBlock Name="CalendarMessage" Classes="hint" IsVisible="False" />
         <TextBlock Classes="sectionHeading" Text="PAPER" />
         <ComboBox ItemsSource="{Binding PaperSizeChoices}" SelectedItem="{Binding Paper}">
           <ComboBox.ItemTemplate>
@@ -213,7 +353,7 @@
       </StackPanel>
     </ScrollViewer>
 
-    <Border Background="{DynamicResource SystemAltMediumLowColor}" Padding="20">
+    <Border Background="{DynamicResource PanelBackground}" Padding="20">
       <!-- Stretch, not Center. The preview fills the slot it is given and fits the sheet
            inside it; a size-negotiating preview pushed the options panel off the window. -->
       <controls:ScenePreview Name="Preview"

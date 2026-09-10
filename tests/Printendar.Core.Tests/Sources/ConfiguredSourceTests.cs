@@ -10,9 +10,12 @@ namespace Printendar.Core.Tests.Sources;
 /// Until this existed, reopening the app lost whatever you had connected and you started from
 /// a sample month again. That is the difference between a demo and a tool.
 ///
-/// What is stored is deliberately thin: where to find a calendar, and which account it belongs
-/// to. No token ever reaches this file. Microsoft credentials stay in MSAL's own
-/// platform-encrypted cache, and only the account identifier is written here.
+/// What is stored is deliberately thin: where to find a calendar, what to call it, and what
+/// colour to print it. No credential reaches this file, because there is none to reach it:
+/// Printendar signs in to nothing.
+///
+/// A published feed address is the exception worth naming. It is not a password, but anyone
+/// holding one can read that calendar, so it is treated as worth keeping quiet about.
 /// </remarks>
 public sealed class ConfiguredSourceTests : IDisposable
 {
@@ -69,25 +72,25 @@ public sealed class ConfiguredSourceTests : IDisposable
     }
 
     [Fact]
-    public void Several_accounts_of_the_same_kind_are_kept_apart()
+    public void Several_calendars_of_the_same_kind_are_kept_apart()
     {
         // Merging a work and a personal calendar onto one sheet is a real reason people want
-        // this, so two Microsoft accounts have to coexist rather than overwrite each other.
+        // this, so two feeds have to coexist rather than overwrite each other.
         var store = NewStore();
 
         store.Save(store.Load() with
         {
             Sources =
             [
-                new ConfiguredSource("a", CalendarSourceKind.Microsoft365, "Work", null, "home-account-1"),
-                new ConfiguredSource("b", CalendarSourceKind.Microsoft365, "Personal", null, "home-account-2"),
+                new ConfiguredSource("a", CalendarSourceKind.IcsUrl, "Work", "https://example.com/work.ics"),
+                new ConfiguredSource("b", CalendarSourceKind.IcsUrl, "Personal", "https://example.com/home.ics"),
             ],
         });
 
         var reloaded = NewStore().Load().Sources;
 
         Assert.Equal(2, reloaded.Count);
-        Assert.Equal(["home-account-1", "home-account-2"], reloaded.Select(s => s.AccountId));
+        Assert.Equal(["Work", "Personal"], reloaded.Select(s => s.DisplayName));
     }
 
     [Fact]
@@ -101,7 +104,7 @@ public sealed class ConfiguredSourceTests : IDisposable
         {
             Sources =
             [
-                new ConfiguredSource("a", CalendarSourceKind.Microsoft365, "Work", null, "acct")
+                new ConfiguredSource("a", CalendarSourceKind.IcsUrl, "Work", "https://example.com/work.ics")
                 {
                     SelectedCalendarIds = ["cal-1", "cal-3"],
                 },
@@ -133,15 +136,14 @@ public sealed class ConfiguredSourceTests : IDisposable
         // must cost the user only that one entry.
         //
         // Asserting the bad source is gone is not enough on its own: quarantining the whole
-        // file would also satisfy it, while silently throwing away the client id, the good
-        // calendar and every other preference. So the surrounding settings are checked too,
-        // and they are what makes this test about tolerance rather than about failure.
+        // file would also satisfy that, while silently throwing away every calendar the user
+        // had. Insisting the good one is still there is what makes this a test about
+        // tolerance rather than about failing quietly.
         Directory.CreateDirectory(_directory);
         File.WriteAllText(
             Path.Combine(_directory, SettingsStore.FileName),
             """
             {
-              "MicrosoftClientId": "kept-me",
               "Sources": [
                 { "Id": "future", "Kind": "SomethingFromTheFuture", "DisplayName": "?" },
                 { "Id": "good", "Kind": "IcsFile", "DisplayName": "Family", "Location": "family.ics" }
@@ -149,10 +151,7 @@ public sealed class ConfiguredSourceTests : IDisposable
             }
             """);
 
-        var settings = NewStore().Load();
-
-        Assert.Equal("kept-me", settings.MicrosoftClientId);
-        Assert.Equal("good", settings.Sources.Single().Id);
+        Assert.Equal("good", NewStore().Load().Sources.Single().Id);
     }
 
     [Fact]

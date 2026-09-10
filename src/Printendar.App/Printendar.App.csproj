@@ -15,6 +15,13 @@
     <RootNamespace>Printendar.App</RootNamespace>
     <AssemblyName>Printendar</AssemblyName>
     <ApplicationManifest>app.manifest</ApplicationManifest>
+
+    <!--
+      The icon compiled into the executable, which is what Explorer, the taskbar and a
+      shortcut all read. Separate from the window icon below: that one is set by Avalonia at
+      runtime, and on Linux and macOS it is the only one there is.
+    -->
+    <ApplicationIcon>..\..\assets\printendar.ico</ApplicationIcon>
     <IsPackable>false</IsPackable>
 
     <!-- Avalonia compiles XAML at build time and reports binding errors as build errors. -->
@@ -35,8 +42,13 @@
   </ItemGroup>
 
   <ItemGroup>
+    <!-- Linked rather than copied, so the file the build reads and the file in the repository
+         are the same one and cannot drift apart. -->
+    <AvaloniaResource Include="..\..\assets\printendar.ico" Link="Assets\printendar.ico" />
+  </ItemGroup>
+
+  <ItemGroup>
     <ProjectReference Include="..\Printendar.Core\Printendar.Core.csproj" />
-    <ProjectReference Include="..\Printendar.Sources.Microsoft365\Printendar.Sources.Microsoft365.csproj" />
     <ProjectReference Include="..\Printendar.Sources.Ics\Printendar.Sources.Ics.csproj" />
   </ItemGroup>
 

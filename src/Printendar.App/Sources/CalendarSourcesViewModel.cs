@@ -6,7 +6,6 @@ using Printendar.Core.Layout;
 using Printendar.Core.Settings;
 using Printendar.Core.Sources;
 using Printendar.Sources.Ics;
-using Printendar.Sources.Microsoft365;
 using SkiaSharp;
 
 namespace Printendar.App.Sources;
@@ -16,9 +15,9 @@ namespace Printendar.App.Sources;
 /// </summary>
 /// <remarks>
 /// Split out of the main window's state rather than added to it. The window was already
-/// carrying the page, the paper, the fit policy and the Microsoft setup, and account
-/// management is a separate concern with its own persistence; folding it in would have made
-/// one class nobody could hold in their head.
+/// carrying the page, the paper and the fit policy, and the list of calendars is a separate
+/// concern with its own persistence; folding it in would have made one class nobody could
+/// hold in their head.
 /// </remarks>
 public sealed class CalendarSourcesViewModel : INotifyPropertyChanged
 {
@@ -81,12 +80,6 @@ public sealed class CalendarSourcesViewModel : INotifyPropertyChanged
 
         try
         {
-            if (CalendarSourceFactory.UnavailableReason(entry.Configured.Kind, _settings) is { } reason)
-            {
-                entry.Error = reason;
-                return;
-            }
-
             var source = CalendarSourceFactory.Create(entry.Configured, _settings);
             entry.Attach(source);
 
@@ -107,10 +100,6 @@ public sealed class CalendarSourcesViewModel : INotifyPropertyChanged
             var calendars = await source.ListCalendarsAsync(cancellationToken).ConfigureAwait(true);
 
             entry.SetCalendars(calendars, ColorsInUseExcept(entry));
-        }
-        catch (Microsoft365SignInException ex)
-        {
-            entry.Error = ex.Diagnosis.Message;
         }
         catch (OperationCanceledException)
         {
@@ -253,7 +242,7 @@ public sealed class CalendarSourcesViewModel : INotifyPropertyChanged
 
     public bool HasMissingData => MissingDataWarning is not null;
 
-    /// <summary>Refreshes the settings this reads Microsoft configuration from.</summary>
+    /// <summary>Takes on settings that were changed elsewhere.</summary>
     public void UpdateSettings(AppSettings settings) => _settings = settings;
 
     /// <summary>Wires an entry to this list: selection, renaming, and its buttons.</summary>
@@ -321,13 +310,8 @@ public sealed class CalendarSourcesViewModel : INotifyPropertyChanged
                 entry.SetCalendars(calendars, ColorsInUseExcept(entry));
             }
         }
-        catch (Microsoft365SignInException ex)
-        {
-            entry.Error = ex.Diagnosis.Message;
-        }
         catch (OperationCanceledException)
         {
-            // The browser window was closed. Not an error worth shouting about.
         }
         catch (Exception ex)
         {
@@ -387,18 +371,13 @@ public sealed class CalendarSourcesViewModel : INotifyPropertyChanged
     /// which leaves the host, and "calendar.google.com" is the name of a company's server rather
     /// than of anybody's calendar. No amount of parsing fixes that, so the fix is to ask.
     /// </remarks>
-    public static string? SuggestNameForUrl(string url)
-    {
-        try
-        {
-            return IcsUrlCalendarSource.NormalizeUrl(url).Host;
-        }
-        catch (Exception)
-        {
-            // Half-typed addresses are the normal case while a suggestion is being shown.
-            return null;
-        }
-    }
+    public static string? SuggestNameForUrl(string url) =>
+        // Asked rather than attempted, because this runs on every keystroke and a half-typed
+        // address is the normal case while somebody is still typing one. Throwing and catching
+        // an exception per character to answer a question with a plain answer is waste.
+        IcsUrlCalendarSource.DescribeAddressProblem(url) is null
+            ? IcsUrlCalendarSource.NormalizeUrl(url).Host
+            : null;
 
     /// <summary>Makes a source from a file the user picked.</summary>
     public static ConfiguredSource ForFile(string path, string? displayName = null)

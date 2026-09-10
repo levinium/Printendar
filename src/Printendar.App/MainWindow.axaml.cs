@@ -1,10 +1,16 @@
 using Avalonia.Controls;
+using Avalonia.Input;
 using Avalonia.Interactivity;
+using Avalonia.LogicalTree;
 using Avalonia.Platform.Storage;
+using Avalonia.Threading;
+using Avalonia.VisualTree;
 using Printendar.App.Controls;
 using Printendar.App.Printing;
+using Printendar.App.Sources;
 using Printendar.Core.Export;
 using Printendar.Core.Printing;
+using Printendar.Core.Scene;
 using Printendar.Core.Sources;
 using SkiaSharp;
 
@@ -33,7 +39,8 @@ public partial class MainWindow : Window
         this.FindControl<Button>("NextMonth")!.Click += (_, _) => model.StepMonth(1);
         this.FindControl<Button>("SavePdf")!.Click += OnSavePdf;
         this.FindControl<Button>("Print")!.Click += OnPrint;
-        this.FindControl<Button>("ManageCalendars")!.Click += OnManageCalendars;
+        this.FindControl<Button>("AddLink")!.Click += OnAddLink;
+        this.FindControl<Button>("AddFile")!.Click += OnAddFile;
 
         // Loading opens every saved calendar, which for a feed means the network. Not awaited,
         // so the window appears at once and the calendars fill in as they answer.
@@ -43,7 +50,18 @@ public partial class MainWindow : Window
     /// <summary>Opens the spectrum picker for a colour outside the eight offered.</summary>
     private async void OnCustomColor(object? sender, RoutedEventArgs e)
     {
-        if (sender is not Control { DataContext: SelectableCalendar calendar })
+        // Either shape, because the row and the flyout inside it no longer share a data
+        // context: the sidebar draws one row per source and reaches its single calendar
+        // through the entry, while the manage window still hands the calendar over directly.
+        // Matching only one of them is how a button silently stops doing anything.
+        var calendar = sender switch
+        {
+            Control { DataContext: SelectableCalendar direct } => direct,
+            Control { DataContext: SourceEntry entry } => entry.Calendar,
+            _ => null,
+        };
+
+        if (calendar is null)
         {
             return;
         }
@@ -67,15 +85,251 @@ public partial class MainWindow : Window
     }
 
 
-    private async void OnManageCalendars(object? sender, RoutedEventArgs e)
+    // ------------------------------------------------------------ the calendar list
+    //
+    // These lived in a separate manage-calendars window. Everything it offered applies to one
+    // calendar in a list the sidebar already draws, so the window was a second copy of that
+    // list you had to open in order to act on the first one. The actions moved onto the cards.
+
+    /// <summary>Says something about the calendar list, under the Add button.</summary>
+    /// <remarks>
+    /// Its own line rather than the status bar at the foot of the window. That bar explains
+    /// what fitting the page cost, which is about the sheet; this is about the list, and it is
+    /// eighteen inches away from the thing it is talking about.
+    /// </remarks>
+    private void Say(string message)
     {
-        var dialog = new ManageCalendarsWindow(_model.Sources, _model.Settings);
+        var block = this.FindControl<TextBlock>("CalendarMessage")!;
 
-        await dialog.ShowDialog(this);
+        block.Text = message;
+        block.IsVisible = !string.IsNullOrEmpty(message);
+    }
 
-        // The list may have changed while it was open, and the month on screen was laid out
-        // from the old one.
+    /// <summary>Opens the name for editing, or closes it and keeps what was typed.</summary>
+    private void OnToggleRename(object? sender, RoutedEventArgs e)
+    {
+        if (sender is not Button button || button.DataContext is not SourceEntry entry)
+        {
+            return;
+        }
+
+        if (entry.IsEditingName)
+        {
+            FinishRename(entry, button);
+            return;
+        }
+
+        entry.IsEditingName = true;
+
+        // The box has only just been made visible, so it cannot take focus until a layout pass
+        // has run. Posting puts the focus after that, which is the difference between clicking
+        // the pencil and being able to type, and clicking the pencil and then having to click
+        // the field as well.
+        Dispatcher.UIThread.Post(
+            () =>
+            {
+                if (FindInCard<TextBox>(button, "NameBox") is { } box)
+                {
+                    box.Focus();
+                    box.SelectAll();
+                }
+            },
+            DispatcherPriority.Input);
+    }
+
+    private void OnNameKeyDown(object? sender, KeyEventArgs e)
+    {
+        if (sender is not TextBox box || box.DataContext is not SourceEntry entry)
+        {
+            return;
+        }
+
+        switch (e.Key)
+        {
+            case Key.Escape:
+                // Put back what it was called. The binding writes on losing focus, so nothing
+                // has been saved yet and restoring the text is enough to undo the whole edit.
+                box.Text = entry.DisplayName;
+                FinishRename(entry, box);
+                e.Handled = true;
+                break;
+
+            case Key.Enter:
+                FinishRename(entry, box);
+                e.Handled = true;
+                break;
+        }
+    }
+
+    /// <summary>
+    /// Closes the name field, committing whatever is in it.
+    /// </summary>
+    /// <remarks>
+    /// Moving the focus is what commits: the name is bound on lost focus rather than on every
+    /// keystroke, so a name is saved once when it is finished rather than once per letter, and
+    /// a half-typed name never reaches the settings file.
+    /// </remarks>
+    private void FinishRename(SourceEntry entry, Control from)
+    {
+        // A blank name is refused rather than saved, because a calendar with no name cannot be
+        // told apart in the list or in the printed legend. It was already refused, but
+        // silently: the box simply sprang back to the old name with no explanation, which
+        // reads as the app having lost what was typed.
+        if (FindInCard<TextBox>(from, "NameBox") is { } box && string.IsNullOrWhiteSpace(box.Text))
+        {
+            Say($"A calendar needs a name, so this one is still called \"{entry.DisplayName}\".");
+
+            // Put the old name back in the box as well as in the model. The box keeps whatever
+            // was typed while it is hidden, so leaving it empty means the next click on the
+            // pencil opens an empty field for a calendar that has a perfectly good name.
+            box.Text = entry.DisplayName;
+        }
+
+        (FindInCard<Button>(from, "RenameButton") ?? (Control)this).Focus();
+        entry.IsEditingName = false;
+    }
+
+    /// <summary>Finds a named control within the same card as <paramref name="from"/>.</summary>
+    private static T? FindInCard<T>(Control from, string name)
+        where T : Control =>
+        from.FindAncestorOfType<Border>()?
+            .GetLogicalDescendants()
+            .OfType<T>()
+            .FirstOrDefault(c => c.Name == name);
+
+    /// <summary>Reads one calendar again, without touching the others.</summary>
+    private async void OnRefreshOne(object? sender, RoutedEventArgs e)
+    {
+        if (sender is not Control { DataContext: SourceEntry entry })
+        {
+            return;
+        }
+
+        Say($"Reading {entry.DisplayName}…");
+
+        await _model.Sources.ReconnectAsync(entry);
+
+        Say(entry.HasError
+            ? $"{entry.DisplayName} could not be read."
+            : $"{entry.DisplayName} is up to date.");
+
         await _model.RefreshEventsAsync();
+    }
+
+    /// <summary>Removes one calendar, after asking.</summary>
+    /// <remarks>
+    /// A confirmation because there is no undo and the button sits a few pixels from the one
+    /// that renames. What it costs is named exactly: a link has to be found again, a file only
+    /// has to be picked again, and those are not the same loss.
+    /// </remarks>
+    private async void OnRemoveOne(object? sender, RoutedEventArgs e)
+    {
+        if (sender is not Control { DataContext: SourceEntry entry })
+        {
+            return;
+        }
+
+        var cost = entry.Configured.Kind == CalendarSourceKind.IcsUrl
+            ? "Its address is not kept anywhere else, so you would need the published link again to add it back."
+            : "The file itself is not touched, so you can add it again whenever you like.";
+
+        if (!await CalendarPrompts.ConfirmAsync(
+                this,
+                "Remove this calendar?",
+                $"\"{entry.DisplayName}\" will stop appearing on the printed page. {cost}",
+                confirmLabel: "Remove"))
+        {
+            return;
+        }
+
+        entry.RemoveCommand?.Execute(entry);
+
+        Say($"Removed {entry.DisplayName}.");
+    }
+
+    private async void OnAddLink(object? sender, RoutedEventArgs e)
+    {
+        if (await CalendarPrompts.AskForFeedAsync(this) is not { } feed)
+        {
+            return;
+        }
+
+        try
+        {
+            await _model.Sources.AddAsync(CalendarSourcesViewModel.ForUrl(feed.Address, feed.Name));
+            Say("Added. If the link is private, keep it secret: it is the credential.");
+        }
+        catch (Exception ex)
+        {
+            Say(ex.Message);
+        }
+    }
+
+    private async void OnAddFile(object? sender, RoutedEventArgs e)
+    {
+        var files = await StorageProvider.OpenFilePickerAsync(new FilePickerOpenOptions
+        {
+            Title = "Add a calendar file",
+            AllowMultiple = true,
+            FileTypeFilter =
+            [
+                new FilePickerFileType("Calendar files") { Patterns = ["*.ics"] },
+                FilePickerFileTypes.All,
+            ],
+        });
+
+        var added = 0;
+
+        foreach (var file in files)
+        {
+            if (file.TryGetLocalPath() is not { } path)
+            {
+                continue;
+            }
+
+            string suggested;
+
+            try
+            {
+                // Checked before the name is asked for, so a file that cannot be used is
+                // refused straight away rather than after the user has thought of a name.
+                suggested = CalendarSourcesViewModel.SuggestNameForFile(path);
+            }
+            catch (Exception ex)
+            {
+                Say(ex.Message);
+                return;
+            }
+
+            var name = await CalendarPrompts.AskForNameAsync(
+                this,
+                $"Adding {System.IO.Path.GetFileName(path)}. What should it appear as, in the " +
+                "list and in the legend on the printed page?",
+                suggested);
+
+            if (name is null)
+            {
+                // Cancelled this one. Any others picked at the same time still get their turn.
+                continue;
+            }
+
+            try
+            {
+                // Each file becomes its own entry, so the list matches what was picked.
+                await _model.Sources.AddAsync(CalendarSourcesViewModel.ForFile(path, name));
+                added++;
+            }
+            catch (Exception ex)
+            {
+                Say(ex.Message);
+                return;
+            }
+        }
+
+        if (added > 0)
+        {
+            Say(added == 1 ? "Added." : $"Added {added} calendars.");
+        }
     }
 
     /// <summary>
@@ -99,9 +353,14 @@ public partial class MainWindow : Window
         }
 
         var proceed = new Button { Content = $"{action} anyway", Width = 150 };
+
+        // "Go back" rather than "Fix calendars", because there is nowhere to be taken any
+        // more: the calendar list, its errors and the button that reads one again are all on
+        // the window behind this dialog. Offering to open something would be offering to open
+        // what is already there.
         var fix = new Button
         {
-            Content = "Fix calendars",
+            Content = "Go back",
             Width = 130,
             Margin = new Avalonia.Thickness(0, 0, 8, 0),
             IsDefault = true,
@@ -145,22 +404,40 @@ public partial class MainWindow : Window
 
         if (!result)
         {
-            // Taken straight to the place the problem is fixed, rather than told to go and
-            // find it.
-            OnManageCalendars(this, new RoutedEventArgs());
+            // The sidebar already names which calendar failed and why, so the message here
+            // points at it rather than repeating it.
+            Say(warning);
         }
 
         return result;
     }
 
-    private async void OnSavePdf(object? sender, RoutedEventArgs e)
+    /// <summary>
+    /// Re-reads the calendars, then hands back the page that resulted.
+    /// </summary>
+    /// <remarks>
+    /// Both outputs go through here rather than reading the scene directly. A PDF saved from
+    /// this morning's copy is exactly as wrong as a sheet printed from it, and having only one
+    /// of them refresh is the kind of difference nobody notices until the two disagree.
+    ///
+    /// The refresh happens before the warning, so the warning describes the calendars as they
+    /// are now: a feed that has started working again should not still be reported as missing.
+    /// </remarks>
+    private async Task<ScenePage?> PrepareForOutputAsync(string action)
     {
-        if (_model.Scene is not { } scene)
+        await _model.RefreshBeforePrintingAsync();
+
+        if (!await ConfirmIncompleteAsync(action))
         {
-            return;
+            return null;
         }
 
-        if (!await ConfirmIncompleteAsync("Save"))
+        return _model.Scene;
+    }
+
+    private async void OnSavePdf(object? sender, RoutedEventArgs e)
+    {
+        if (await PrepareForOutputAsync("Save") is not { } scene)
         {
             return;
         }
@@ -178,20 +455,16 @@ public partial class MainWindow : Window
             return;
         }
 
-        // The same scene object the preview drew, so the file cannot differ from what was
-        // on screen.
+        // The same scene object the preview is showing, so the file cannot differ from what
+        // is on screen.
         PdfExporter.ExportToFile(scene, path, PdfMetadata.Default with { Title = _model.MonthTitle }, _model.Measurer);
     }
 
     private async void OnPrint(object? sender, RoutedEventArgs e)
     {
-        if (_model.Scene is not { } scene)
-        {
-            return;
-        }
-
-        // Before the printer dialog, not after: paper cannot be un-printed.
-        if (!await ConfirmIncompleteAsync("Print"))
+        // Both the refresh and the warning happen before the printer dialog, not after: paper
+        // cannot be un-printed.
+        if (await PrepareForOutputAsync("Print") is not { } scene)
         {
             return;
         }

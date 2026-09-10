@@ -41,11 +41,35 @@ public sealed class SourceEntry : INotifyPropertyChanged
 
     public ObservableCollection<SelectableCalendar> Calendars { get; } = [];
 
+    /// <summary>
+    /// The one calendar this source holds, once it has been read. Null until then.
+    /// </summary>
+    /// <remarks>
+    /// Every source Printendar can read is a single iCalendar, and
+    /// <c>IcsSourceBase.ListCalendarsAsync</c> returns exactly one entry whose id and name are
+    /// the source's own. The sidebar used to draw the collection as a nested list underneath
+    /// the source, which meant every calendar appeared twice: its name as the heading, and the
+    /// same name again on the one row indented beneath it. Reaching the single item directly is
+    /// what lets that be drawn once.
+    ///
+    /// The collection stays because the aggregator asks for events by
+    /// <see cref="CalendarRef"/> and reports failures per calendar. Should a source that really
+    /// holds several ever return, this property and the row that binds to it are what would
+    /// need rethinking; nothing below the view model would.
+    ///
+    /// Null is a real state, not a defensive check: it is what a source looks like while it is
+    /// being read, and what it stays as when the file is missing or the feed cannot be reached.
+    /// </remarks>
+    public SelectableCalendar? Calendar => Calendars.Count > 0 ? Calendars[0] : null;
+
+    /// <summary>Whether there is a calendar to tick and colour yet.</summary>
+    public bool HasCalendar => Calendar is not null;
+
+    public bool HasNoCalendar => Calendar is null;
+
     /// <summary>What kind of thing this is, in words, under the name.</summary>
     public string KindLabel => Configured.Kind switch
     {
-        CalendarSourceKind.Microsoft365 => "Microsoft 365",
-        CalendarSourceKind.Google => "Google Calendar",
         CalendarSourceKind.IcsFile => "Calendar file",
         CalendarSourceKind.IcsUrl => "Calendar feed",
         _ => "Unknown",
@@ -197,6 +221,12 @@ public sealed class SourceEntry : INotifyPropertyChanged
         // in memory would mean they were worked out afresh on every start, which is the drift
         // this was meant to stop.
         RecordCalendarState();
+
+        // The row binds to the single calendar rather than to the collection, and a collection
+        // change does not tell it that Calendar now has a value.
+        Raise(nameof(Calendar));
+        Raise(nameof(HasCalendar));
+        Raise(nameof(HasNoCalendar));
     }
 
     /// <summary>Copies what is ticked and what colour each calendar is into the saved shape.</summary>

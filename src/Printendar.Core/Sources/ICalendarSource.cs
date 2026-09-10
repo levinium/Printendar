@@ -27,23 +27,24 @@ public sealed record AccountInfo(string DisplayName, string? Email);
 public sealed record CalendarRef(string SourceId, string CalendarId, string DisplayName, bool IsDefault);
 
 /// <summary>
-/// Reads calendars from somewhere: Microsoft 365, Google, or an ICS file or feed.
+/// Reads calendars from somewhere: an iCalendar file, or a published feed.
 /// </summary>
 /// <remarks>
-/// Small on purpose. Everything hard about a provider (recurrence expansion, paging, time zone
+/// Small on purpose. Everything hard about a provider (recurrence expansion, time zone
 /// conversion, its own idea of an exclusive end date) is the adapter's problem and is dealt
 /// with before anything crosses this boundary. What comes back is
 /// <see cref="CalendarEvent"/> occurrences, already in the display zone, already expanded.
 ///
-/// The layout engine therefore has no idea Microsoft 365 exists, and a new provider is a new
-/// implementation of this interface rather than a change to anything that draws.
+/// The layout engine therefore has no idea where a calendar came from, and a new kind of
+/// source is a new implementation of this interface rather than a change to anything that
+/// draws.
 /// </remarks>
 public interface ICalendarSource : IAsyncDisposable
 {
     /// <summary>Stable id for this source, used in settings and to attribute events.</summary>
     string SourceId { get; }
 
-    /// <summary>What the user should see, for example "Microsoft 365".</summary>
+    /// <summary>What the user should see, for example "Calendar feed".</summary>
     string ProviderName { get; }
 
     ValueTask<AuthState> GetAuthStateAsync(CancellationToken cancellationToken);

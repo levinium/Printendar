@@ -1,4 +1,5 @@
 using System.Net;
+using System.Net.Http.Headers;
 
 namespace Printendar.Sources.Ics;
 
@@ -43,6 +44,21 @@ public sealed class IcsUrlCalendarSource : IcsSourceBase
         _http.DefaultRequestHeaders.UserAgent.ParseAdd(
             "Mozilla/5.0 (Windows NT 10.0; Win64; x64) Printendar/1.0");
         _http.DefaultRequestHeaders.Accept.ParseAdd("text/calendar, text/plain;q=0.9, */*;q=0.8");
+
+        // Printendar exists to print a calendar as it stands right now, so nothing in between
+        // may answer from a store. A corporate proxy caching a feed for an hour would put a
+        // meeting added this morning on no printout made this afternoon, and the failure would
+        // look like the calendar being wrong rather than like a stale copy.
+        //
+        // Pragma is the same instruction spelled for HTTP/1.0 caches, which some proxies still
+        // are. It costs one header and covers the ones that ignore Cache-Control.
+        _http.DefaultRequestHeaders.CacheControl = new CacheControlHeaderValue
+        {
+            NoCache = true,
+            NoStore = true,
+        };
+
+        _http.DefaultRequestHeaders.Pragma.ParseAdd("no-cache");
     }
 
     public Uri Url { get; }
@@ -58,9 +74,42 @@ public sealed class IcsUrlCalendarSource : IcsSourceBase
     /// rewriting it is the difference between the common case working and failing with an
     /// unhelpful protocol error.
     /// </remarks>
-    public static Uri NormalizeUrl(string url)
+    public static Uri NormalizeUrl(string url) =>
+        TryNormalizeUrl(url, out var uri, out var problem)
+            ? uri
+            : throw new InvalidOperationException(problem);
+
+    /// <summary>
+    /// Why an address cannot be used, or null when it can.
+    /// </summary>
+    /// <remarks>
+    /// The same rules as <see cref="NormalizeUrl"/>, answered rather than thrown, so a dialog
+    /// can check what has been typed on every keystroke without an exception per character.
+    ///
+    /// Both go through one place on purpose. Two opinions about what a usable address is drift
+    /// apart, and the drift shows up either as a dialog that lets somebody press Add and then
+    /// fails, or as one that refuses an address that would have worked.
+    /// </remarks>
+    public static string? DescribeAddressProblem(string? url)
     {
-        ArgumentException.ThrowIfNullOrWhiteSpace(url);
+        TryNormalizeUrl(url, out _, out var problem);
+
+        return problem;
+    }
+
+    private static bool TryNormalizeUrl(string? url, out Uri normalized, out string? problem)
+    {
+        normalized = null!;
+
+        if (string.IsNullOrWhiteSpace(url))
+        {
+            // Said plainly rather than as "required". Somebody looking at an empty box already
+            // knows it is empty; what they need is where the address comes from.
+            problem =
+                "Paste the calendar's published address. Outlook, Google and Apple each offer " +
+                "one under their sharing or publishing settings, and it begins https:// or webcal://";
+            return false;
+        }
 
         var trimmed = url.Trim();
 
@@ -70,13 +119,18 @@ public sealed class IcsUrlCalendarSource : IcsSourceBase
         }
 
         if (!Uri.TryCreate(trimmed, UriKind.Absolute, out var uri) ||
-            (uri.Scheme != Uri.UriSchemeHttps && uri.Scheme != Uri.UriSchemeHttp))
+            (uri.Scheme != Uri.UriSchemeHttps && uri.Scheme != Uri.UriSchemeHttp) ||
+            string.IsNullOrEmpty(uri.Host))
         {
-            throw new InvalidOperationException(
-                $"\"{url}\" is not a calendar address. It should begin with https:// or webcal://.");
+            problem =
+                $"\"{trimmed}\" is not a calendar address. It should begin https:// or webcal://, " +
+                "and usually ends in .ics";
+            return false;
         }
 
-        return uri;
+        normalized = uri;
+        problem = null;
+        return true;
     }
 
     protected override async Task<string> ReadContentAsync(CancellationToken cancellationToken)

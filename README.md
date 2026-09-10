@@ -82,57 +82,60 @@ the copies, and a warning if your printer's unprintable margin will clip the bor
 
 ## Connecting a calendar
 
-### A calendar file, needing no account
+Printendar signs in to nothing. There is no account to connect, no password to give it, no
+consent screen and nobody to ask for permission. It reads iCalendar, which is the format every
+calendar already publishes, and that is the whole of it.
 
-Export or download a calendar as a `.ics` file from Outlook, Google Calendar, Apple Calendar
-or anything else that speaks iCalendar, then **Open a calendar file**. Recurring events,
-all-day events and exceptions are all handled. The file is read fresh each time, so
-re-exporting and printing again picks up changes.
+Two ways in, and they are the same thing arriving differently.
 
-This route needs no sign-in, no network and no approval from anybody.
+### A calendar link
 
-### Microsoft 365
+Outlook, Google Calendar and Apple Calendar can each publish a calendar as a link ending in
+`.ics`, sometimes beginning `webcal://`. Copy it, press **Calendar link**, paste.
 
-Not in the downloadable build yet. The code is written and tested, but signing in needs an
-Entra application registration that has not been created, so the button is disabled rather
-than failing after you click it.
+From then on it is automatic. Printendar re-reads every link immediately before it prints, so
+the sheet is made from the calendar as it stands at that moment rather than from whatever was
+fetched when you opened the app.
 
-### For IT administrators
+**Treat a published link as a password.** It usually contains a long random string, and anyone
+holding it can read that calendar without signing in to anything. That is what makes this work
+without an account, and it is also the reason not to paste one into a group chat.
 
-Everything below is in the app, under **IT administrator setup**. No script, no environment
-variable, no editing files.
+Some organisations switch calendar publishing off. If yours has, an administrator can re-enable
+it — in Microsoft 365 that lives in the Exchange admin center under **Organization > Sharing**.
+Until then, use a file.
 
-**Most organisations need only one click.** If your tenant blocks user consent for third-party
-apps, an administrator opens **Approve Printendar for my organisation**, approves once, and
-everyone in the organisation can sign in from then on.
+### A calendar file
 
-**If you would rather use your own app registration**, the same panel opens the Entra portal,
-shows the exact settings to use, and gives you a box to paste the Application (client) ID into.
-It is saved for your Windows account.
+Export a calendar as `.ics` and press **File on this computer**. Recurring events, all-day
+events and exceptions are all handled.
 
-Printendar does not create the registration for you, on purpose. Doing that would need
-`Application.ReadWrite.All`, a documented privilege escalation path: anything holding it can
-add credentials to a privileged application and reach Global Administrator. A calendar printer
-asking for directory write access deserves to be refused.
+A file is a snapshot: it is exactly current at the moment you exported it and never changes
+afterwards, so this route trades the automatic refresh for not depending on the publisher at
+all. Export again when you want newer.
 
-There is a `scripts/New-PrintendarAppRegistration.ps1` if you would rather automate the
-registration across tenants, but it is an alternative, not the path.
+### Why not sign in to Outlook or Google directly?
 
-It asks only for read access to calendars, and the token is stored encrypted by your operating
-system: DPAPI on Windows, Keychain on macOS, libsecret on Linux. Nothing is sent anywhere
-except to Microsoft.
+It was built, and then removed. Reading a calendar through Microsoft Graph or the Google
+Calendar API requires an application registration, which requires a directory or a verified
+developer account, which means every person publishing their own build of Printendar needs
+one, and every organisation with strict consent policies needs an administrator to approve it
+before anyone can print anything.
+
+An `.ics` link needs none of that and cannot be revoked out from under the app. The cost is
+that a published link is refreshed on the publisher's schedule rather than instantly, which
+for a sheet of paper covering a month is a trade worth making.
 
 ## Status
 
 Early, and honest about it.
 
 **Works:** the layout engine, the desktop window with a live preview, printing on Windows,
-PDF export, and reading `.ics` files. Printing has been confirmed on real hardware.
+PDF export, and reading `.ics` files and published `.ics` links. Printing has been confirmed
+on real hardware.
 
 **Not built yet:**
 
-- Microsoft 365 sign-in needs an application registration, as above.
-- Google Calendar, and `.ics` subscription URLs (files only for now).
 - Printing on macOS and Linux. Those still hand the PDF to your system's viewer, because
   Avalonia has no printing of its own, and the viewer's own scale setting then decides the
   result. Windows drives the printer directly.
@@ -153,7 +156,7 @@ own unprintable margin near the edges, and only a real sheet tells you whether t
 Needs the .NET 10 SDK.
 
 ```powershell
-dotnet test          # 240 tests, all three platforms in CI
+dotnet test          # 258 tests, all three platforms in CI
 ./publish.ps1        # builds dist\Printendar-v0.2.0-win-x64.zip
 ```
 
@@ -169,8 +172,7 @@ dotnet run --project src/Printendar.Cli -- render --month 2026-03 --demo --out m
 
 ```
 src/Printendar.Core/                 paper, layout, the scene graph, rendering, PDF export
-src/Printendar.Sources.Microsoft365/ Microsoft Graph and MSAL
-src/Printendar.Sources.Ics/          iCalendar files
+src/Printendar.Sources.Ics/          iCalendar files and published feeds
 src/Printendar.App/                  the Avalonia window
 src/Printendar.Cli/                  headless harness
 tests/                               run on Windows, macOS and Linux
@@ -223,7 +225,6 @@ references the JIT never needed.
 | SkiaSharp | MIT | measuring text, drawing, PDF export |
 | Avalonia | MIT | the desktop window |
 | Ical.Net | MIT | reading `.ics` files and expanding recurrence |
-| Microsoft.Identity.Client | MIT | signing in to Microsoft 365 |
 | Noto Sans | SIL OFL 1.1 | the embedded layout font |
 
 ## Licence

@@ -13,4 +13,38 @@
     <StyleInclude Source="avares://Avalonia.Controls.ColorPicker/Themes/Fluent/Fluent.xaml" />
   </Application.Styles>
 
+  <!--
+    Printendar's own surface brushes.
+
+    Fluent's SystemAltMediumLowColor and the rest of that family are Color resources, not
+    brushes. Handing a Color to a Background silently produces no brush at all: no error, no
+    warning, just a panel that is transparent and looks like it was never given a background.
+    Every raised surface in the app was drawn that way and none of them were visible.
+
+    Brushes here, defined once for the whole application, so a card looks the same in the
+    sidebar and in the manage window rather than each one guessing.
+  -->
+  <Application.Resources>
+    <ResourceDictionary>
+      <ResourceDictionary.ThemeDictionaries>
+
+        <ResourceDictionary x:Key="Light">
+          <SolidColorBrush x:Key="CardBackground"  Color="#FFFFFF" />
+          <SolidColorBrush x:Key="CardBorder"      Color="#22000000" />
+          <SolidColorBrush x:Key="PanelBackground" Color="#0F000000" />
+        </ResourceDictionary>
+
+        <ResourceDictionary x:Key="Dark">
+          <!-- Lighter than the window rather than darker. A dark card on a dark window reads
+               as a hole in the page; raised surfaces are how every other dark interface says
+               "this is a thing on top". -->
+          <SolidColorBrush x:Key="CardBackground"  Color="#14FFFFFF" />
+          <SolidColorBrush x:Key="CardBorder"      Color="#26FFFFFF" />
+          <SolidColorBrush x:Key="PanelBackground" Color="#0AFFFFFF" />
+        </ResourceDictionary>
+
+      </ResourceDictionary.ThemeDictionaries>
+    </ResourceDictionary>
+  </Application.Resources>
+
 </Application>

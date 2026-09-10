@@ -59,7 +59,7 @@
     </StackPanel>
 
     <!-- The same control the main window uses, drawing the same scene object. -->
-    <Border Background="{DynamicResource SystemAltMediumLowColor}" Padding="16">
+    <Border Background="{DynamicResource PanelBackground}" Padding="16">
       <controls:ScenePreview Name="Preview"
                              Scene="{Binding Scene}"
                              HorizontalAlignment="Stretch"

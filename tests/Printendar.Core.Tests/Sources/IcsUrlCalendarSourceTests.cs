@@ -35,9 +35,12 @@ public class IcsUrlCalendarSourceTests
     {
         public HttpRequestMessage? LastRequest { get; private set; }
 
+        public int Requests { get; private set; }
+
         protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken _)
         {
             LastRequest = request;
+            Requests++;
 
             var response = new HttpResponseMessage(status)
             {
@@ -62,6 +65,105 @@ public class IcsUrlCalendarSourceTests
             new DateSpan(new DateOnly(2026, 3, 1), new DateOnly(2026, 3, 31)),
             TimeZoneInfo.Utc,
             default);
+    }
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    [InlineData("   ")]
+    public void An_empty_address_is_described_rather_than_accepted(string? address)
+    {
+        // The Add button used to close the dialog on an empty box and do nothing whatsoever:
+        // no calendar, no message, no clue that anything had gone wrong. Saying why is what
+        // turns that into something a person can act on.
+        Assert.NotNull(IcsUrlCalendarSource.DescribeAddressProblem(address));
+    }
+
+    [Theory]
+    [InlineData("calendar.google.com/basic.ics")] // pasted without a scheme
+    [InlineData("ftp://example.com/feed.ics")]    // a scheme, but not one that can be fetched
+    [InlineData("just some words")]
+    [InlineData("https://")]                      // a scheme and nothing else
+    public void An_address_that_cannot_be_fetched_is_described_rather_than_accepted(string address)
+    {
+        var problem = IcsUrlCalendarSource.DescribeAddressProblem(address);
+
+        Assert.NotNull(problem);
+
+        // Naming what a good one looks like, because "invalid address" tells somebody they are
+        // wrong without telling them what right would be.
+        Assert.Contains("https://", problem, StringComparison.Ordinal);
+    }
+
+    [Theory]
+    [InlineData("https://example.com/feed.ics")]
+    [InlineData("http://example.com/feed.ics")]
+    [InlineData("webcal://example.com/feed.ics")]
+    [InlineData("  https://example.com/feed.ics  ")]
+    public void An_address_that_can_be_fetched_has_nothing_to_say_about_it(string address)
+    {
+        Assert.Null(IcsUrlCalendarSource.DescribeAddressProblem(address));
+    }
+
+    [Fact]
+    public void The_check_and_the_conversion_agree_about_every_address()
+    {
+        // Two separate opinions about what a usable address is would drift, and the drift shows
+        // up as a dialog that lets you press Add and then throws, or one that refuses an
+        // address that would have worked perfectly.
+        string?[] addresses =
+        [
+            null, "", "   ", "nonsense", "ftp://example.com/f.ics", "https://",
+            "https://example.com/feed.ics", "webcal://example.com/feed.ics",
+        ];
+
+        foreach (var address in addresses)
+        {
+            var described = IcsUrlCalendarSource.DescribeAddressProblem(address) is null;
+            var converts = Record.Exception(() => IcsUrlCalendarSource.NormalizeUrl(address!)) is null;
+
+            Assert.True(described == converts, $"disagreement about \"{address}\"");
+        }
+    }
+
+    [Fact]
+    public async Task A_feed_is_asked_for_the_live_copy_rather_than_whatever_was_cached()
+    {
+        // The one thing Printendar prints is a calendar as it stands right now, and a meeting
+        // added this morning missing from this afternoon's printout is the whole product
+        // failing. Nothing between here and the publisher may answer from a store: not a
+        // corporate proxy, not a CDN, not HttpClient's own handler.
+        //
+        // This is the half of freshness we control. How current the publisher's own copy is
+        // remains theirs to decide.
+        var handler = new StubHandler(body: MinimalCalendar);
+
+        await using var source = new IcsUrlCalendarSource(
+            "s", "Feed", "https://example.com/feed.ics", handler);
+
+        await ReadAsync(source);
+
+        var cacheControl = handler.LastRequest!.Headers.CacheControl;
+
+        Assert.NotNull(cacheControl);
+        Assert.True(cacheControl.NoCache, "the request must not be answered from a cache");
+    }
+
+    [Fact]
+    public async Task Reading_twice_asks_the_publisher_twice()
+    {
+        // Printing re-reads every source first. If the source quietly answered the second read
+        // from something it kept, that re-read would be theatre and the page would be as old
+        // as the last time the month changed.
+        var handler = new StubHandler(body: MinimalCalendar);
+
+        await using var source = new IcsUrlCalendarSource(
+            "s", "Feed", "https://example.com/feed.ics", handler);
+
+        await ReadAsync(source);
+        await ReadAsync(source);
+
+        Assert.Equal(2, handler.Requests);
     }
 
     [Fact]

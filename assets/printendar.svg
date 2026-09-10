@@ -1,0 +1,34 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64"
+     role="img" aria-label="Printendar">
+  <title>Printendar</title>
+
+  <!-- The machine. -->
+  <rect x="3" y="33" width="58" height="25" rx="5" fill="#2A7D6B" stroke="#171B1A" stroke-width="3"/>
+
+  <!-- The mouth, and the line set in from its fill that makes it a recess rather than a hole
+       cut in the green. -->
+  <rect x="7" y="37" width="50" height="10" rx="2" fill="#FFFFFF"/>
+  <rect x="9.4" y="39.4" width="45.2" height="5.2" rx="1.4" fill="none" stroke="#171B1A" stroke-width="1.6"/>
+
+  <!-- The sheet: three sides only, because the fourth is still inside the machine. A closed
+       rectangle over a slot is a page resting on a printer; an open one is a page coming out
+       of it. Flat caps, so the two sides stop where the path stops instead of bulging past. -->
+  <path d="M12 47 V15 a3 3 0 0 1 3 -3 h34 a3 3 0 0 1 3 3 v32"
+        fill="#FFFFFF" stroke="#171B1A" stroke-width="3"
+        stroke-linejoin="round" stroke-linecap="butt"/>
+
+  <line x1="16" y1="17" x2="48" y2="17" stroke="#C9D2CE" stroke-width="2" stroke-linecap="round"/>
+
+  <!-- Two rows of four. Not a real month: four rows of seven is grey noise at the size this is
+       actually looked at. -->
+  <g fill="#C9D2CE">
+    <rect x="16"   y="21"   width="6.6" height="5" rx="1.2"/>
+    <rect x="24.4" y="21"   width="6.6" height="5" rx="1.2" fill="#D62728"/>
+    <rect x="32.8" y="21"   width="6.6" height="5" rx="1.2"/>
+    <rect x="41.2" y="21"   width="6.6" height="5" rx="1.2"/>
+    <rect x="16"   y="28.5" width="6.6" height="5" rx="1.2"/>
+    <rect x="24.4" y="28.5" width="6.6" height="5" rx="1.2"/>
+    <rect x="32.8" y="28.5" width="6.6" height="5" rx="1.2" fill="#37B593"/>
+    <rect x="41.2" y="28.5" width="6.6" height="5" rx="1.2"/>
+  </g>
+</svg>
