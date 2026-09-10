@@ -1,0 +1,39 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <!--
+      Plain net10.0, so this runs on the macOS and Linux CI legs as well as Windows. That is
+      most of the point: the window had never been opened anywhere but Windows, and a headless
+      run is the only way to find that out without owning three machines.
+    -->
+    <TargetFramework>net10.0</TargetFramework>
+    <IsPackable>false</IsPackable>
+
+    <!-- xunit v3 runs the test assembly itself rather than through testhost, so it needs its
+         own app host. This is why the project is an executable and the Core suite is not. -->
+    <OutputType>Exe</OutputType>
+
+    <!-- Referencing an app whose other framework is Windows-specific. Without this the Linux
+         and macOS legs cannot resolve the reference at all. -->
+    <EnableWindowsTargeting>true</EnableWindowsTargeting>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="coverlet.collector" />
+    <PackageReference Include="Microsoft.NET.Test.Sdk" />
+    <PackageReference Include="xunit.v3" />
+    <PackageReference Include="xunit.runner.visualstudio" />
+    <PackageReference Include="Avalonia.Headless.XUnit" />
+    <!-- Headless CI containers have no libfontconfig or libGL. -->
+    <PackageReference Include="SkiaSharp.NativeAssets.Linux.NoDependencies" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\Printendar.App\Printendar.App.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Using Include="Xunit" />
+  </ItemGroup>
+
+</Project>

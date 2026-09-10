@@ -148,8 +148,10 @@ always black on white.
 - Only the month view. A week, an agenda and a tri-fold are planned.
 - A multi-day event repeats as a chip on each day it covers, rather than drawing as one
   spanning bar.
-- The window has only been run on Windows. The engine underneath is built and tested on
-  Windows, macOS and Linux by CI, but nobody has opened the app itself on a Mac.
+- No macOS or Linux download. Both build from the same source, and CI now opens the real
+  window headlessly on all three platforms, but nobody has yet watched it run on a desktop
+  that is not Windows. macOS has a second obstacle: unsigned apps there are blocked rather
+  than merely warned about, which takes a paid developer account to solve.
 - Nothing reminds you that a published link has gone stale at the publisher's end. Printendar
   fetches the current copy before every print, but how current the publisher keeps that copy
   is theirs to decide, and typically runs behind the live calendar.
@@ -165,7 +167,7 @@ own unprintable margin near the edges, and only a real sheet tells you whether t
 Needs the .NET 10 SDK.
 
 ```powershell
-dotnet test          # 284 tests, all three platforms in CI
+dotnet test          # 294 tests, all three platforms in CI
 ./publish.ps1        # builds dist\Printendar-v0.3.0-win-x64.zip
 ```
 
@@ -184,7 +186,9 @@ src/Printendar.Core/                 paper, layout, the scene graph, rendering, 
 src/Printendar.Sources.Ics/          iCalendar files and published feeds
 src/Printendar.App/                  the Avalonia window
 src/Printendar.Cli/                  headless harness
-tests/                               run on Windows, macOS and Linux
+tests/Printendar.Core.Tests/         the engine, no UI
+tests/Printendar.App.Tests/          the real window, headless
+
 ```
 
 ### The design that matters

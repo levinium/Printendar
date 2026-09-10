@@ -88,13 +88,23 @@ public sealed record ConfiguredSource(
     string? AccountId = null)
 {
     /// <summary>
-    /// The calendars inside this source that are being printed.
+    /// The calendars inside this source that are being printed, or null if never chosen.
     /// </summary>
     /// <remarks>
-    /// Remembered because otherwise every restart falls back to the account's default calendar
+    /// Remembered because otherwise every restart falls back to the source's default calendar
     /// and silently drops the others the user had chosen, which reads as data loss.
+    ///
+    /// Null and empty mean different things, which is why this is nullable rather than an
+    /// empty list. Null is "nobody has expressed an opinion", and the default calendar is
+    /// ticked. Empty is "every calendar here was deliberately turned off", and nothing is.
+    /// Collapsing the two made unticking the only calendar in a source last exactly as long as
+    /// the program stayed open: it wrote an empty list, which read back as never chosen, and
+    /// the calendar was printing again the next morning.
+    ///
+    /// Null is left out of the settings file rather than written, so a source nobody has
+    /// touched carries nothing at all.
     /// </remarks>
-    public IReadOnlyList<string> SelectedCalendarIds { get; init; } = [];
+    public IReadOnlyList<string>? SelectedCalendarIds { get; init; }
 
     /// <summary>
     /// The printed colour of each calendar in this source, by calendar id, as #RRGGBB.

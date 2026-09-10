@@ -8,5 +8,6 @@
   </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/Printendar.Core.Tests/Printendar.Core.Tests.csproj" />
+    <Project Path="tests/Printendar.App.Tests/Printendar.App.Tests.csproj" />
   </Folder>
 </Solution>

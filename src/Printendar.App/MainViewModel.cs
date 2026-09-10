@@ -46,7 +46,23 @@ public sealed class MainViewModel : INotifyPropertyChanged
     private IReadOnlyList<CalendarLegendEntry> _calendars = [];
 
     public MainViewModel()
+        : this(new SettingsStore(new DesktopSettingsLocation()))
     {
+    }
+
+    /// <summary>
+    /// Builds the window's state against a given settings store.
+    /// </summary>
+    /// <remarks>
+    /// The store is passed in so that a test can point it at a temporary directory. It used to
+    /// be created here, against the real per-user folder, which meant any test that got as far
+    /// as ticking a calendar would rewrite whatever the person running the tests actually had
+    /// saved.
+    /// </remarks>
+    public MainViewModel(SettingsStore settingsStore)
+    {
+        _settingsStore = settingsStore;
+
         // Created eagerly so bindings have something to attach to before settings are read.
         // An empty list is the correct starting state; loading replaces it.
         Sources = new CalendarSourcesViewModel(_settingsStore, _settings);
@@ -235,7 +251,7 @@ public sealed class MainViewModel : INotifyPropertyChanged
     /// </remarks>
     public CalendarSourcesViewModel Sources { get; private set; }
 
-    private readonly SettingsStore _settingsStore = new(new DesktopSettingsLocation());
+    private readonly SettingsStore _settingsStore;
     private AppSettings _settings = new();
 
     /// <summary>What is saved right now, for windows that need to read it.</summary>

@@ -115,6 +115,34 @@ public sealed class ConfiguredSourceTests : IDisposable
     }
 
     [Fact]
+    public void Turning_every_calendar_off_is_remembered_as_a_choice_rather_than_as_silence()
+    {
+        // The two states this file has to keep apart. Nobody has chosen yet, and the default
+        // calendar should be ticked next time; or everything here was deliberately turned off,
+        // and it should stay off. Written as one list, the second looked like the first, and a
+        // calendar somebody had switched off was printing again the next morning.
+        var store = NewStore();
+
+        store.Save(store.Load() with
+        {
+            Sources =
+            [
+                new ConfiguredSource("chosen", CalendarSourceKind.IcsUrl, "None of it", "https://example.com/a.ics")
+                {
+                    SelectedCalendarIds = [],
+                },
+                new ConfiguredSource("untouched", CalendarSourceKind.IcsUrl, "Never asked", "https://example.com/b.ics"),
+            ],
+        });
+
+        var reloaded = NewStore().Load().Sources;
+
+        Assert.NotNull(reloaded.Single(s => s.Id == "chosen").SelectedCalendarIds);
+        Assert.Empty(reloaded.Single(s => s.Id == "chosen").SelectedCalendarIds!);
+        Assert.Null(reloaded.Single(s => s.Id == "untouched").SelectedCalendarIds);
+    }
+
+    [Fact]
     public void No_token_or_secret_field_exists_to_be_written()
     {
         // Structural, not a spot check: if somebody adds a Token or Secret property to the

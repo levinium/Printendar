@@ -57,6 +57,14 @@
     <PackageVersion Include="Microsoft.NET.Test.Sdk" Version="17.14.1" />
     <PackageVersion Include="xunit" Version="2.9.3" />
     <PackageVersion Include="xunit.runner.visualstudio" Version="3.1.4" />
+    <!--
+      xunit v3, for the headless window tests only. Avalonia.Headless.XUnit 12.1.2 depends on
+      xunit.v3.extensibility.core and cannot be driven by v2, and a v3 test project is a real
+      executable with its own app host rather than a library run through testhost. Core stays
+      on v2: there is no reason to move a suite that works, and the two coexist because they
+      are separate projects.
+    -->
+    <PackageVersion Include="xunit.v3" Version="3.2.2" />
   </ItemGroup>
 
 </Project>

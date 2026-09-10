@@ -197,9 +197,11 @@ public sealed class SourceEntry : INotifyPropertyChanged
         {
             var selectable = new SelectableCalendar(calendar, colors[calendar.CalendarId])
             {
-                IsSelected = remembered.Count > 0
-                    ? remembered.Contains(calendar.CalendarId)
-                    : calendar.IsDefault,
+                // Null is nobody having chosen yet, and only then does the default apply. An
+                // empty list is a choice: every calendar in this source is deliberately off.
+                IsSelected = remembered is null
+                    ? calendar.IsDefault
+                    : remembered.Contains(calendar.CalendarId),
             };
 
             selectable.SelectionChanged += (_, _) =>
